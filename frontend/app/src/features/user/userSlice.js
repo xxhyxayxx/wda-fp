@@ -1,10 +1,25 @@
-// userSlice.js
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import axios from 'axios';
 
 const initialState = {
   isLoggedIn: false,
   userInfo: null,
+  status: 'idle', // 新しい状態のフィールドを追加
+  error: null,    // エラー状態のフィールドを追加
 };
+
+// 非同期アクションの作成
+export const registerUser = createAsyncThunk(
+  'user/registerUser',
+  async (userData, { rejectWithValue }) => {
+    try {
+      const response = await axios.post('/api/register', userData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
 
 const userSlice = createSlice({
   name: 'user',
@@ -14,11 +29,24 @@ const userSlice = createSlice({
       state.isLoggedIn = true;
       state.userInfo = action.payload;
     },
-    register: (state, action) => {
-      state.userInfo = action.payload;  // 登録時にはログインの有無は変更しない
-    },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Register
+      .addCase(registerUser.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(registerUser.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.userInfo = action.payload;
+      })
+      .addCase(registerUser.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      });
   },
 });
 
 export default userSlice.reducer;
-export const { login, register } = userSlice.actions;
+export const { login } = userSlice.actions;
