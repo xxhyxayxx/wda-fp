@@ -5,12 +5,9 @@ const RegisterForm = () => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const { username, email, password } = event.target.elements;
+    const { email, password } = event.target.elements;
     const newErrors = {};
   
-    if (!username.value) {
-      newErrors.username = 'ユーザー名は必須です';
-    }
     if (!email.value) {
       newErrors.email = 'メールアドレスは必須です';
     }
@@ -25,14 +22,8 @@ const RegisterForm = () => {
     }
   };
   
-
   return (
     <form role="form" onSubmit={handleSubmit}>
-      <div>
-        <label htmlFor="username">ユーザー名</label>
-        <input id="username" name="username" type="text" />
-        {errors.username && <span>{errors.username}</span>}
-      </div>
       <div>
         <label htmlFor="email">メールアドレス</label>
         <input id="email" name="email" type="email" />

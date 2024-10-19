@@ -13,7 +13,6 @@ describe('RegisterForm validation', () => {
 
     // 各フィールドに対するバリデーションメッセージが表示されることを確認
     await waitFor(() => {
-      expect(screen.getByText(/ユーザー名は必須です/i)).toBeInTheDocument();
       expect(screen.getByText(/メールアドレスは必須です/i)).toBeInTheDocument();
       expect(screen.getByText(/パスワードは必須です/i)).toBeInTheDocument();
     });
