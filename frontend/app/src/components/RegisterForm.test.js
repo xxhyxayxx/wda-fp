@@ -1,15 +1,21 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom'; // 追加: Jest DOMのマッチャーをインポート
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
 import RegisterForm from './RegisterForm';
 
-describe('RegisterForm', () => {
-  test('renders RegisterForm with correct fields', () => {
+describe('RegisterForm validation', () => {
+  test('displays validation messages when fields are empty', async () => {
     render(<RegisterForm />);
-    
-    // フォームの項目（ユーザー名、メールアドレス、パスワード）の存在を確認
-    expect(screen.getByLabelText(/ユーザー名/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/メールアドレス/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/パスワード/i)).toBeInTheDocument();
+
+    // 登録ボタンをクリック
+    const registerButton = screen.getByRole('button', { name: /登録/i });
+    fireEvent.click(registerButton);
+
+    // 各フィールドに対するバリデーションメッセージが表示されることを確認
+    await waitFor(() => {
+      expect(screen.getByText(/ユーザー名は必須です/i)).toBeInTheDocument();
+      expect(screen.getByText(/メールアドレスは必須です/i)).toBeInTheDocument();
+      expect(screen.getByText(/パスワードは必須です/i)).toBeInTheDocument();
+    });
   });
 });

@@ -1,20 +1,47 @@
-// src/components/RegisterForm.js
-import React from 'react';
+import React, { useState } from 'react';
 
 const RegisterForm = () => {
+  const [errors, setErrors] = useState({});
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    const { username, email, password } = event.target.elements;
+    const newErrors = {};
+  
+    if (!username.value) {
+      newErrors.username = 'ユーザー名は必須です';
+    }
+    if (!email.value) {
+      newErrors.email = 'メールアドレスは必須です';
+    }
+    if (!password.value) {
+      newErrors.password = 'パスワードは必須です';
+    }
+  
+    setErrors(newErrors);
+  
+    if (Object.keys(newErrors).length === 0) {
+      // バリデーションエラーがない場合の処理
+    }
+  };
+  
+
   return (
-    <form>
+    <form role="form" onSubmit={handleSubmit}>
       <div>
         <label htmlFor="username">ユーザー名</label>
-        <input type="text" id="username" name="username" />
+        <input id="username" name="username" type="text" />
+        {errors.username && <span>{errors.username}</span>}
       </div>
       <div>
         <label htmlFor="email">メールアドレス</label>
-        <input type="email" id="email" name="email" />
+        <input id="email" name="email" type="email" />
+        {errors.email && <span>{errors.email}</span>}
       </div>
       <div>
         <label htmlFor="password">パスワード</label>
-        <input type="password" id="password" name="password" />
+        <input id="password" name="password" type="password" />
+        {errors.password && <span>{errors.password}</span>}
       </div>
       <button type="submit">登録</button>
     </form>
