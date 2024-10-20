@@ -1,4 +1,3 @@
-// RegisterForm.test.js
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -13,11 +12,13 @@ describe('RegisterForm success message', () => {
 
     const emailInput = screen.getByLabelText(/メールアドレス/i);
     const passwordInput = screen.getByLabelText(/パスワード/i);
+    const userTypeSelect = screen.getByLabelText(/ユーザータイプ/i);
     const registerButton = screen.getByRole('button', { name: /登録/i });
 
     // 正しい入力をして登録ボタンをクリック
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    fireEvent.change(userTypeSelect, { target: { value: 'teacher' } });
     fireEvent.click(registerButton);
 
     // 成功メッセージが表示されることを確認

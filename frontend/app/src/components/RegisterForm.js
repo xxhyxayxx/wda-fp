@@ -1,11 +1,10 @@
-// RegisterForm.js
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { register } from '../features/user/userSlice';
+import { registerUser } from '../features/user/userSlice';
 
 const RegisterForm = () => {
   const dispatch = useDispatch();
-  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [formData, setFormData] = useState({ email: '', password: '', user_type: 'student' });
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -19,7 +18,7 @@ const RegisterForm = () => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    const { email, password } = event.target.elements;
+    const { email, password, user_type } = event.target.elements;
     const newErrors = {};
 
     if (!email.value) {
@@ -32,7 +31,11 @@ const RegisterForm = () => {
     setErrors(newErrors);
 
     if (Object.keys(newErrors).length === 0) {
-      dispatch(register({ email: email.value, password: password.value }));
+      dispatch(registerUser({
+        email: email.value,
+        password: password.value,
+        user_type: user_type.value,
+      }));
       setSuccessMessage('登録が完了しました！');
     }
   };
@@ -60,6 +63,18 @@ const RegisterForm = () => {
           onChange={handleInputChange}
         />
         {errors.password && <span>{errors.password}</span>}
+      </div>
+      <div>
+        <label htmlFor="user_type">ユーザータイプ</label>
+        <select
+          id="user_type"
+          name="user_type"
+          value={formData.user_type}
+          onChange={handleInputChange}
+        >
+          <option value="student">Student</option>
+          <option value="teacher">Teacher</option>
+        </select>
       </div>
       <button type="submit">登録</button>
       {successMessage && <div role="alert">{successMessage}</div>}
