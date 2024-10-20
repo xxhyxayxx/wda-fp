@@ -33,6 +33,18 @@ export const loginUser = createAsyncThunk(
     }
 );
 
+export const logoutUser = createAsyncThunk(
+    'user/logoutUser',
+    async (_, { rejectWithValue }) => {
+      try {
+        await axios.post('/api/logout');
+        return true;
+      } catch (error) {
+        return rejectWithValue(error.response.data);
+      }
+    }
+);
+
 const userSlice = createSlice({
     name: 'user',
     initialState,
@@ -66,9 +78,21 @@ const userSlice = createSlice({
           state.status = 'failed';
           state.error = action.payload;
           state.isLoggedIn = false;
+        })
+        // Logout
+        .addCase(logoutUser.pending, (state) => {
+          state.status = 'loading';
+          state.error = null;
+        })
+        .addCase(logoutUser.fulfilled, (state) => {
+          state.status = 'succeeded';
+          state.isLoggedIn = false;
+          state.userInfo = null;
+        })
+        .addCase(logoutUser.rejected, (state, action) => {
+          state.status = 'failed';
+          state.error = action.payload;
         });
     },
 });
-
 export default userSlice.reducer;
-export const { login } = userSlice.actions;

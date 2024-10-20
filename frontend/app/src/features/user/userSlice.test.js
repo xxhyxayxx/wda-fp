@@ -1,4 +1,4 @@
-import userReducer, { login, registerUser, loginUser } from './userSlice';
+import userReducer, { registerUser, loginUser, logoutUser } from './userSlice';
 import { configureStore } from '@reduxjs/toolkit';
 import axios from 'axios';
 
@@ -100,5 +100,48 @@ describe('userSlice async actions', () => {
       expect(state.status).toBe('failed');
       expect(state.error).toBe('ログインエラーが発生しました');
       expect(state.isLoggedIn).toBe(false);
+    });
+});
+
+describe('userSlice async actions', () => {
+    let store;
+  
+    beforeEach(() => {
+      store = configureStore({
+        reducer: {
+          user: userReducer,
+        },
+      });
+    });
+  
+    // ログアウトが成功した場合のテスト
+    it('should handle logoutUser successfully', async () => {
+      // モックAPIレスポンスの準備
+      axios.post.mockResolvedValueOnce({});
+  
+      // `logoutUser` のディスパッチをテスト
+      await store.dispatch(logoutUser());
+  
+      // 期待する状態を確認
+      const state = store.getState().user;
+      expect(state.status).toBe('succeeded');
+      expect(state.isLoggedIn).toBe(false);
+      expect(state.userInfo).toBe(null);
+    });
+  
+    // ログアウトが失敗した場合のテスト
+    it('should handle logoutUser failure', async () => {
+      // モックAPIレスポンスでエラーを返すように設定
+      axios.post.mockRejectedValueOnce({
+        response: { data: 'ログアウトエラーが発生しました' },
+      });
+  
+      // `logoutUser` のディスパッチをテスト
+      await store.dispatch(logoutUser());
+  
+      // 期待する状態を確認
+      const state = store.getState().user;
+      expect(state.status).toBe('failed');
+      expect(state.error).toBe('ログアウトエラーが発生しました');
     });
 });
