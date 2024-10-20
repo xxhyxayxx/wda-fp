@@ -4,6 +4,7 @@ import { Provider } from 'react-redux';
 import App from './App.jsx';
 import './index.css';
 import RegisterForm from './components/RegisterForm';
+import LoginForm from './components/LoginForm';
 import { store } from './store';
 
 createRoot(document.getElementById('root')).render(
@@ -11,6 +12,7 @@ createRoot(document.getElementById('root')).render(
     <Provider store={store}>
       <App />
       <RegisterForm />
+      <LoginForm />
     </Provider>
   </StrictMode>,
 );

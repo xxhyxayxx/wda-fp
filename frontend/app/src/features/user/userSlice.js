@@ -33,7 +33,10 @@ export const loginUser = createAsyncThunk(
   'user/loginUser',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/login/`, userData);
+      const response = await axios.post(`${API_URL}/login/`, {
+        username: userData.username,  // 修正: usernameとして送信
+        password: userData.password,
+      });
       const token = response.data.token;
       localStorage.setItem('authToken', token);
       axios.defaults.headers.common['Authorization'] = `Token ${token}`;
