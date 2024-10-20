@@ -11,6 +11,7 @@ from rest_framework.authentication import TokenAuthentication
 class UserRegistrationAPIView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserRegistrationSerializer
+    permission_classes = [permissions.AllowAny]
 
 class UserProfileUpdateAPIView(generics.UpdateAPIView):
     queryset = CustomUser.objects.all()

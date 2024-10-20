@@ -70,7 +70,7 @@ class UserProfileUpdateAPIViewTest(TestCase):
             'email': 'updateduser@example.com',
         }
         response = self.client.put(url, data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_user_profile_update_invalid_email(self):
         """無効なメールアドレスを渡した場合のバリデーションテスト"""
