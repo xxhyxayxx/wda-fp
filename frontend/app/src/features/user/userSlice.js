@@ -1,7 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axios from 'axios';
-
-const API_URL = 'http://127.0.0.1:8000/accounts';
+import apiClient from '../../utils/apiClient'; // 作成したaxiosインスタンス
 
 const initialState = {
   isLoggedIn: false,
@@ -13,7 +11,7 @@ const initialState = {
 // ローカルストレージに保存されたトークンをAxiosに設定
 const token = localStorage.getItem('authToken');
 if (token) {
-  axios.defaults.headers.common['Authorization'] = `Token ${token}`;
+  apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;
 }
 
 // 非同期アクションの作成
@@ -21,10 +19,15 @@ export const registerUser = createAsyncThunk(
   'user/registerUser',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/register/`, userData);
+      const response = await apiClient.post('/register/', userData, {
+        headers: {
+          // Authorizationヘッダーを明示的に取り除く
+          Authorization: undefined,
+        },
+      });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.message || '登録に失敗しました');
     }
   }
 );
@@ -33,16 +36,16 @@ export const loginUser = createAsyncThunk(
   'user/loginUser',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/login/`, {
+      const response = await apiClient.post('/login/', {
         username: userData.username,  // 修正: usernameとして送信
         password: userData.password,
       });
       const token = response.data.token;
       localStorage.setItem('authToken', token);
-      axios.defaults.headers.common['Authorization'] = `Token ${token}`;
+      apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.message || 'ログインに失敗しました');
     }
   }
 );
@@ -51,12 +54,12 @@ export const logoutUser = createAsyncThunk(
   'user/logoutUser',
   async (_, { rejectWithValue }) => {
     try {
-      await axios.post(`${API_URL}/logout/`);
+      await apiClient.post('/logout/');
       localStorage.removeItem('authToken');
-      delete axios.defaults.headers.common['Authorization'];
+      delete apiClient.defaults.headers.common['Authorization'];
       return true;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.message || 'ログアウトに失敗しました');
     }
   }
 );
