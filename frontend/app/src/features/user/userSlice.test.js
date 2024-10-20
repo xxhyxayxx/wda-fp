@@ -1,4 +1,4 @@
-import userReducer, { login, registerUser } from './userSlice';
+import userReducer, { login, registerUser, loginUser } from './userSlice';
 import { configureStore } from '@reduxjs/toolkit';
 import axios from 'axios';
 
@@ -14,16 +14,6 @@ describe('userSlice', () => {
 
   it('should return the initial state', () => {
     expect(userReducer(undefined, { type: 'unknown' })).toEqual(initialState);
-  });
-
-  it('should handle login', () => {
-    const previousState = { isLoggedIn: false, userInfo: null };
-    const action = login({ email: 'test@example.com', name: 'Test User' });
-    const expectedState = {
-      isLoggedIn: true,
-      userInfo: { email: 'test@example.com', name: 'Test User' },
-    };
-    expect(userReducer(previousState, action)).toEqual(expectedState);
   });
 });
 
@@ -67,4 +57,48 @@ describe('userSlice async actions', () => {
     expect(state.status).toBe('failed');
     expect(state.error).toBe('エラーが発生しました');
   });
+});
+
+describe('userSlice async actions', () => {
+    let store;
+  
+    beforeEach(() => {
+      store = configureStore({
+        reducer: {
+          user: userReducer,
+        },
+      });
+    });
+  
+    it('should handle loginUser successfully', async () => {
+      // モックAPIレスポンスの準備
+      axios.post.mockResolvedValueOnce({
+        data: { email: 'test@example.com', name: 'Test User' },
+      });
+  
+      // `loginUser` のディスパッチをテスト
+      await store.dispatch(loginUser({ email: 'test@example.com', password: 'password123' }));
+  
+      // 期待する状態を確認
+      const state = store.getState().user;
+      expect(state.status).toBe('succeeded');
+      expect(state.isLoggedIn).toBe(true);
+      expect(state.userInfo).toEqual({ email: 'test@example.com', name: 'Test User' });
+    });
+  
+    it('should handle loginUser failure', async () => {
+      // モックAPIレスポンスでエラーを返すように設定
+      axios.post.mockRejectedValueOnce({
+        response: { data: 'ログインエラーが発生しました' },
+      });
+  
+      // `loginUser` のディスパッチをテスト
+      await store.dispatch(loginUser({ email: 'test@example.com', password: 'password123' }));
+  
+      // 期待する状態を確認
+      const state = store.getState().user;
+      expect(state.status).toBe('failed');
+      expect(state.error).toBe('ログインエラーが発生しました');
+      expect(state.isLoggedIn).toBe(false);
+    });
 });
