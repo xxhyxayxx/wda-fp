@@ -5,6 +5,7 @@ import App from './App.jsx';
 import './index.css';
 import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
+import LogoutButton from './components/LogoutButton';
 import { store } from './store';
 
 createRoot(document.getElementById('root')).render(
@@ -13,6 +14,7 @@ createRoot(document.getElementById('root')).render(
       <App />
       <RegisterForm />
       <LoginForm />
+      <LogoutButton />
     </Provider>
   </StrictMode>,
 );
