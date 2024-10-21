@@ -13,6 +13,8 @@ createRoot(document.getElementById('root')).render(
     <Provider store={store}>
       <App />
       <RegisterForm />
+      <LoginForm />
+      <LogoutButton />
     </Provider>
   </StrictMode>,
 );
