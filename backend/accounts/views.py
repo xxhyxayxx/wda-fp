@@ -13,7 +13,7 @@ class UserRegistrationAPIView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
 
-class UserProfileUpdateAPIView(generics.UpdateAPIView):
+class UserProfileUpdateAPIView(generics.RetrieveUpdateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -22,10 +22,10 @@ class UserProfileUpdateAPIView(generics.UpdateAPIView):
         return self.request.user
 
     def update(self, request, *args, **kwargs):
-        # プロフィール画像が空の場合、デフォルト画像に設定
+        # プロフィール画像が空の場合、Noneに設定
         data = request.data.copy()
         if data.get('profile_image') == '':
-            data['profile_image'] = 'profile_images/default_profile.png'
+            data['profile_image'] = None
         serializer = self.get_serializer(self.get_object(), data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)

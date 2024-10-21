@@ -58,7 +58,7 @@ class UserProfileUpdateAPIViewTest(TestCase):
         data = {
             'profile_image': ''
         }
-        response = self.client.put(url, data, format='json', partial=True)
+        response = self.client.patch(url, data, format='json', partial=True)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
         self.assertEqual(self.user.profile_image.name, 'profile_images/default_profile.png')
@@ -94,10 +94,29 @@ class UserProfileUpdateAPIViewTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('user_type', response.data)
 
-class UserProfileUpdateAPIViewTest(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user = CustomUser.objects.create_user(email='testuser@example.com', password='testpassword')
+    def test_user_profile_update_duplicate_email(self):
+        """既に存在するメールアドレスを使用して更新しようとした場合のバリデーションテスト"""
+        CustomUser.objects.create_user(email='existinguser@example.com', password='password123')
+        self.client.force_authenticate(user=self.user)
+        url = reverse('user-profile-update')
+        data = {
+            'email': 'existinguser@example.com'
+        }
+        response = self.client.put(url, data, format='json', partial=True)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+
+    def test_user_profile_partial_update_successful(self):
+        """部分更新 (PATCH) が成功するかをテスト"""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('user-profile-update')
+        data = {
+            'name': 'Partially Updated Name'
+        }
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.name, 'Partially Updated Name')
 
     def test_user_profile_update_name_successful(self):
         """認証済みユーザーによる名前の更新が成功するかをテスト"""
@@ -121,3 +140,15 @@ class UserProfileUpdateAPIViewTest(TestCase):
         response = self.client.put(url, data, format='json', partial=True)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('name', response.data)
+
+    def test_user_profile_update_with_default_profile_image(self):
+        """プロフィール画像が空文字で送信された場合にデフォルト画像に戻すことをテスト"""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('user-profile-update')
+        data = {
+            'profile_image': ''
+        }
+        response = self.client.patch(url, data, format='json', partial=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.profile_image.name, 'profile_images/default_profile.png')

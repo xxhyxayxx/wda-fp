@@ -97,8 +97,11 @@ class UserRegistrationSerializerTest(TestCase):
         user = serializer.save()
         self.assertEqual(user.name, 'Test User')
 
+from django.test import RequestFactory
+
 class UserProfileSerializerTest(TestCase):
     def setUp(self):
+        self.factory = RequestFactory()
         self.user = CustomUser.objects.create_user(
             email='testuser@example.com',
             password='testpassword',
@@ -113,7 +116,9 @@ class UserProfileSerializerTest(TestCase):
             'name': 'Updated Name',
             'user_type': 'teacher',
         }
-        serializer = UserProfileSerializer(instance=self.user, data=data, partial=True)
+        request = self.factory.get('/profile/update/')
+        request.user = self.user
+        serializer = UserProfileSerializer(instance=self.user, data=data, partial=True, context={'request': request})
         self.assertTrue(serializer.is_valid())
         updated_user = serializer.save()
         self.assertEqual(updated_user.email, data['email'])
@@ -129,7 +134,9 @@ class UserProfileSerializerTest(TestCase):
         data = {
             'email': 'anotheruser@example.com',  # 既存のメールアドレス
         }
-        serializer = UserProfileSerializer(instance=self.user, data=data, partial=True)
+        request = self.factory.get('/profile/update/')
+        request.user = self.user
+        serializer = UserProfileSerializer(instance=self.user, data=data, partial=True, context={'request': request})
         self.assertFalse(serializer.is_valid())
         self.assertIn('email', serializer.errors)
 
@@ -138,7 +145,9 @@ class UserProfileSerializerTest(TestCase):
         data = {
             'name': 'Partially Updated Name',
         }
-        serializer = UserProfileSerializer(instance=self.user, data=data, partial=True)
+        request = self.factory.get('/profile/update/')
+        request.user = self.user
+        serializer = UserProfileSerializer(instance=self.user, data=data, partial=True, context={'request': request})
         self.assertTrue(serializer.is_valid())
         updated_user = serializer.save()
         self.assertEqual(updated_user.name, data['name'])
@@ -149,8 +158,9 @@ class UserProfileSerializerTest(TestCase):
         data = {
             'name': 'Updated Name Without Image',
         }
-        serializer = UserProfileSerializer(instance=self.user, data=data, partial=True)
+        request = self.factory.get('/profile/update/')
+        request.user = self.user
+        serializer = UserProfileSerializer(instance=self.user, data=data, partial=True, context={'request': request})
         self.assertTrue(serializer.is_valid())
         updated_user = serializer.save()
         self.assertEqual(updated_user.profile_image.name, 'profile_images/default_profile.png')
-

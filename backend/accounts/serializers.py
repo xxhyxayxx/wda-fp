@@ -18,6 +18,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    profile_image = serializers.ImageField(allow_null=True, required=False)  # allow_nullとrequired=Falseを追加
+
     class Meta:
         model = CustomUser
         fields = ('email', 'name', 'user_type', 'profile_image')
+
+    def validate(self, data):
+        # プロフィール画像が空の場合はデフォルトに設定
+        if 'profile_image' in data and not data['profile_image']:
+            data['profile_image'] = 'profile_images/default_profile.png'
+        return data
