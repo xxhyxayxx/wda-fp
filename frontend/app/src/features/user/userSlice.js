@@ -36,19 +36,35 @@ export const loginUser = createAsyncThunk(
   'user/loginUser',
   async (userData, { rejectWithValue }) => {
     try {
+      // 古いトークンを削除してからログインを試みる
+      localStorage.removeItem('authToken');
+      delete apiClient.defaults.headers.common['Authorization'];
+
       const response = await apiClient.post('/login/', {
-        username: userData.username,  // 修正: usernameとして送信
+        username: userData.username,
         password: userData.password,
       });
+
       const token = response.data.token;
+      console.log("Received Token:", response.data);
+
+      if (!token) {
+        throw new Error("トークンが存在しません");
+      }
+
+      // トークンをローカルストレージに保存
       localStorage.setItem('authToken', token);
+      // ログイン後に新しいトークンをセット
       apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;
+
       return response.data;
     } catch (error) {
+      console.error("Error during login:", error);
       return rejectWithValue(error.message || 'ログインに失敗しました');
     }
   }
 );
+
 
 export const logoutUser = createAsyncThunk(
   'user/logoutUser',

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { loginUser } from '../features/user/userSlice';
 
 const LoginForm = () => {
     const dispatch = useDispatch();
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [errors, setErrors] = useState({});
-    const { status, error, isLoggedIn } = useSelector((state) => state.user);
+    const [successMessage, setSuccessMessage] = useState('');
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -16,27 +16,53 @@ const LoginForm = () => {
         });
     };
 
-    // 修正箇所
-    const handleSubmit = (event) => {
+    const handleSubmit = async (event) => {
         event.preventDefault();
-        const { email, password } = formData;
         const newErrors = {};
-
-        if (!email) {
+    
+        // フォームのバリデーション
+        if (!formData.email) {
             newErrors.email = 'メールアドレスは必須です';
         }
-        if (!password) {
+        if (!formData.password) {
             newErrors.password = 'パスワードは必須です';
         }
-
+    
         setErrors(newErrors);
-
+    
         if (Object.keys(newErrors).length === 0) {
-            // emailフィールドをusernameに変更して送信
-            dispatch(loginUser({ username: email, password }));
+            try {
+                // ReduxのloginUserアクションをディスパッチ
+                await dispatch(loginUser({ username: formData.email, password: formData.password })).unwrap();
+    
+                // ログイン成功メッセージを設定
+                setSuccessMessage('ログインに成功しました！');
+                setErrors({});
+            } catch (error) {
+                // エラーレスポンスの中身を詳細にログ出力
+                console.log('Full error object:', error);
+    
+                // エラーメッセージの設定
+                try {
+                    const errorData = JSON.parse(error);
+                    
+                    if (typeof errorData === 'object') {
+                        // 各フィールドに対応するエラーメッセージを設定
+                        const dynamicErrors = {};
+                        Object.entries(errorData).forEach(([key, value]) => {
+                            dynamicErrors[key] = Array.isArray(value) ? value.join(', ') : value;
+                        });
+                        setErrors(dynamicErrors);
+                    } else {
+                        setErrors({ form: errorData });
+                    }
+                } catch (e) {
+                    console.error('Failed to parse error message:', e);
+                    setErrors({ form: 'ログインに失敗しました' });
+                }
+            }
         }
     };
-
 
     return (
         <form role="form" onSubmit={handleSubmit}>
@@ -63,9 +89,8 @@ const LoginForm = () => {
                 {errors.password && <span>{errors.password}</span>}
             </div>
             <button type="submit">ログイン</button>
-            {status === 'loading' && <div>ログイン中...</div>}
-            {status === 'failed' && <div role="alert">エラー: {error}</div>}
-            {isLoggedIn && <div role="alert">ログインに成功しました！</div>}
+            {successMessage && <div role="alert">{successMessage}</div>}
+            {errors.form && <div role="alert">{errors.form}</div>}
         </form>
     );
 };
