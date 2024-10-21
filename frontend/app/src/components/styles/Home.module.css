@@ -1,0 +1,14 @@
+.navMenu{
+    padding: 20px 40px;
+    background-color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo{
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: "Quicksand", sans-serif;
+    color: var(--purple);
+}
