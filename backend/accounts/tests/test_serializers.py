@@ -71,3 +71,28 @@ class UserRegistrationSerializerTest(TestCase):
         serializer = UserRegistrationSerializer(data=data)
         self.assertFalse(serializer.is_valid())
         self.assertIn('password', serializer.errors)
+    
+    def test_default_name_value(self):
+        """ユーザー作成時のデフォルトの名前が 'New User' であることをテスト"""
+        data = {
+            'email': 'testuser@example.com',
+            'password': 'testpassword',
+            'user_type': 'student'
+        }
+        serializer = UserRegistrationSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        user = serializer.save()
+        self.assertEqual(user.name, 'New User')
+
+    def test_name_can_be_specified_during_registration(self):
+        """登録時に名前を指定できるかのテスト"""
+        data = {
+            'email': 'testuser@example.com',
+            'password': 'testpassword',
+            'user_type': 'student',
+            'name': 'Test User'
+        }
+        serializer = UserRegistrationSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        user = serializer.save()
+        self.assertEqual(user.name, 'Test User')
