@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser } from '../features/user/userSlice';
+import style from './styles/LogoutButton.module.css';
 
 const LogoutButton = () => {
   const dispatch = useDispatch();
@@ -10,16 +11,16 @@ const LogoutButton = () => {
   const handleLogout = async () => {
     try {
       await dispatch(logoutUser()).unwrap();
-      setLogoutMessage('ログアウトが完了しました！');
+      setLogoutMessage('Logout successful!');
     } catch (error) {
-      setLogoutMessage('ログアウトに失敗しました');
+      setLogoutMessage('Failed to log out');
     }
   };
 
   return (
     <div>
-      <button onClick={handleLogout} disabled={status === 'loading'}>
-        ログアウト
+      <button onClick={handleLogout} disabled={status === 'loading'} className={style.logoutBtn}>
+        Log out
       </button>
       {logoutMessage && <div role="alert">{logoutMessage}</div>}
     </div>

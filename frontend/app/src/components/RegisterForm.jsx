@@ -74,6 +74,7 @@ const RegisterForm = () => {
   return (
     <div className={styles.pageContainer}>
     <div className={styles.formContainer}> 
+    <h1 className={styles.title}>JOIN US</h1>
     <form role="form" onSubmit={handleSubmit}>
       <div className={styles.formBlock}>
         <label htmlFor="email">E-mail</label>
@@ -109,7 +110,7 @@ const RegisterForm = () => {
           <option value="teacher">Teacher</option>
         </select>
       </div>
-      <button type="submit">Register</button>
+      <button type="submit"className={styles.submitBtn}>Register</button>
       {successMessage && <div role="alert">{successMessage}</div>}
       {errors.form && <div role="alert">{errors.form}</div>}
     </form>

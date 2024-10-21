@@ -7,7 +7,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import userReducer from '../features/user/userSlice';
 import apiClient from '../utils/apiClient';
 
-// apiClientのモック
+// Mocking apiClient
 jest.mock('../utils/apiClient');
 
 describe('LogoutButton', () => {
@@ -38,48 +38,48 @@ describe('LogoutButton', () => {
 
   it('renders the logout button', () => {
     renderWithProvider(<LogoutButton />);
-    const logoutButton = screen.getByRole('button', { name: /ログアウト/i });
+    const logoutButton = screen.getByRole('button', { name: /Log out/i });
     expect(logoutButton).toBeInTheDocument();
   });
 
   it('dispatches logoutUser action and handles successful logout', async () => {
-    // モックしたAPIレスポンス（成功）
+    // Mocking successful API response
     apiClient.post.mockResolvedValueOnce({});
 
     const { store } = renderWithProvider(<LogoutButton />);
-    const logoutButton = screen.getByRole('button', { name: /ログアウト/i });
+    const logoutButton = screen.getByRole('button', { name: /Log out/i });
 
-    // ログアウトボタンをクリック
+    // Click the logout button
     fireEvent.click(logoutButton);
 
-    // ログアウトメッセージが表示されることを確認
+    // Check if logout message is displayed
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('ログアウトが完了しました！');
+      expect(screen.getByRole('alert')).toHaveTextContent('Logout successful!');
     });
 
-    // Redux storeの状態を確認
+    // Verify Redux store state
     const state = store.getState().user;
     expect(state.isLoggedIn).toBe(false);
   });
 
   it('handles logout failure', async () => {
-    // モックしたAPIレスポンス（失敗）
+    // Mocking failed API response
     apiClient.post.mockRejectedValueOnce({
-      response: { data: 'ログアウトに失敗しました' },
+      response: { data: 'Failed to log out' },
     });
 
     const { store } = renderWithProvider(<LogoutButton />);
-    const logoutButton = screen.getByRole('button', { name: /ログアウト/i });
+    const logoutButton = screen.getByRole('button', { name: /Log out/i });
 
-    // ログアウトボタンをクリック
+    // Click the logout button
     fireEvent.click(logoutButton);
 
-    // ログアウト失敗メッセージが表示されていることを確認
+    // Check if logout failure message is displayed
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('ログアウトに失敗しました');
+      expect(screen.getByRole('alert')).toHaveTextContent('Failed to log out');
     });
 
-    // Redux storeの状態を確認（失敗したため、ログイン状態のまま）
+    // Verify Redux store state (still logged in due to failure)
     const state = store.getState().user;
     expect(state.isLoggedIn).toBe(true);
   });
