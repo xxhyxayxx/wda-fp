@@ -7,10 +7,13 @@ const LogoutButton = () => {
   const [logoutMessage, setLogoutMessage] = useState('');
   const { status } = useSelector((state) => state.user);
 
-  const handleLogout = () => {
-    dispatch(logoutUser());
-    setLogoutMessage('ログアウトが完了しました！');
-    console.log('ログアウトが完了しました！');
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutUser()).unwrap();
+      setLogoutMessage('ログアウトが完了しました！');
+    } catch (error) {
+      setLogoutMessage('ログアウトに失敗しました');
+    }
   };
 
   return (
