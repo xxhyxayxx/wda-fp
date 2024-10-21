@@ -6,12 +6,12 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import userReducer from '../features/user/userSlice';
 import apiClient from '../utils/apiClient';
-import { BrowserRouter } from 'react-router-dom'; // 追加
+import { BrowserRouter } from 'react-router-dom';
 
-// apiClient のモック
+// Mock apiClient
 jest.mock('../utils/apiClient');
 
-// Redux ストアを含んだコンポーネントをレンダリングするための関数
+// Function to render a component with Redux store
 const renderWithProvider = (component) => {
   const store = configureStore({
     reducer: {
@@ -22,9 +22,9 @@ const renderWithProvider = (component) => {
 
   return render(
     <Provider store={store}>
-      <BrowserRouter> {/* 追加 */}
+      <BrowserRouter>
         {component}
-      </BrowserRouter> {/* 追加 */}
+      </BrowserRouter>
     </Provider>
   );
 };
@@ -33,32 +33,32 @@ describe('LoginForm Component', () => {
   test('renders the form fields', () => {
     renderWithProvider(<LoginForm />);
 
-    // 各フォームの要素が存在するか確認
-    expect(screen.getByLabelText(/メールアドレス/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/パスワード/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /ログイン/i })).toBeInTheDocument();
+    // Check that form elements are present
+    expect(screen.getByLabelText(/E-mail/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Login/i })).toBeInTheDocument();
   });
 
   test('handles successful login', async () => {
-    // 成功レスポンスをモック
+    // Mock successful response
     apiClient.post.mockResolvedValueOnce({
       data: { token: 'mockToken', email: 'test@example.com', name: 'Test User' },
     });
 
     renderWithProvider(<LoginForm />);
 
-    const emailInput = screen.getByLabelText(/メールアドレス/i);
-    const passwordInput = screen.getByLabelText(/パスワード/i);
-    const loginButton = screen.getByRole('button', { name: /ログイン/i });
+    const emailInput = screen.getByLabelText(/E-mail/i);
+    const passwordInput = screen.getByLabelText(/Password/i);
+    const loginButton = screen.getByRole('button', { name: /Login/i });
 
-    // 入力フィールドにデータを入力
+    // Input data into fields
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
-    // ログインボタンをクリック
+    // Click login button
     fireEvent.click(loginButton);
 
-    // ホームページに遷移することを確認（モックしているため単にリダイレクトが呼ばれることを確認）
+    // Verify navigation to home page (check if redirect was called)
     await waitFor(() => {
       expect(apiClient.post).toHaveBeenCalledWith('/login/', {
         username: 'test@example.com',
@@ -68,39 +68,39 @@ describe('LoginForm Component', () => {
   });
 
   test('displays error messages on failed login', async () => {
-    // モックAPIレスポンスでエラーを返すように設定
+    // Mock API response to return an error
     apiClient.post.mockRejectedValueOnce({
-      response: { data: { detail: '無効な認証情報です' } },
+      response: { data: { detail: 'Invalid credentials' } },
     });
 
     renderWithProvider(<LoginForm />);
 
-    const emailInput = screen.getByLabelText(/メールアドレス/i);
-    const passwordInput = screen.getByLabelText(/パスワード/i);
-    const loginButton = screen.getByRole('button', { name: /ログイン/i });
+    const emailInput = screen.getByLabelText(/E-mail/i);
+    const passwordInput = screen.getByLabelText(/Password/i);
+    const loginButton = screen.getByRole('button', { name: /Login/i });
 
-    // 入力フィールドにデータを入力
+    // Input data into fields
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } });
 
-    // ログインボタンをクリック
+    // Click login button
     fireEvent.click(loginButton);
 
-    // エラーメッセージが表示されていることを確認
+    // Check that error message is displayed
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('ログインに失敗しました');
+      expect(screen.getByRole('alert')).toHaveTextContent('Login failed');
     });
   });
 
   test('shows error messages when email or password is empty', async () => {
     renderWithProvider(<LoginForm />);
-    const loginButton = screen.getByRole('button', { name: /ログイン/i });
+    const loginButton = screen.getByRole('button', { name: /Login/i });
 
-    // メールアドレスとパスワードを空にしてログインボタンをクリック
+    // Click login button with empty fields
     fireEvent.click(loginButton);
 
-    // エラーメッセージが表示されることを確認
-    expect(screen.getByText('メールアドレスは必須です')).toBeInTheDocument();
-    expect(screen.getByText('パスワードは必須です')).toBeInTheDocument();
+    // Check that error messages are displayed
+    expect(screen.getByText('Email is required')).toBeInTheDocument();
+    expect(screen.getByText('Password is required')).toBeInTheDocument();
   });
 });
