@@ -16,3 +16,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             name=validated_data.get('name', 'New User')  # nameフィールドを追加、デフォルト値設定
         )
         return user
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ('email', 'name', 'user_type', 'profile_image')

@@ -93,3 +93,31 @@ class UserProfileUpdateAPIViewTest(TestCase):
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('user_type', response.data)
+
+class UserProfileUpdateAPIViewTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = CustomUser.objects.create_user(email='testuser@example.com', password='testpassword')
+
+    def test_user_profile_update_name_successful(self):
+        """認証済みユーザーによる名前の更新が成功するかをテスト"""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('user-profile-update')
+        data = {
+            'name': 'Updated Name'
+        }
+        response = self.client.put(url, data, format='json', partial=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.name, 'Updated Name')
+
+    def test_user_profile_update_invalid_name(self):
+        """無効な名前を渡した場合のバリデーションエラーチェック"""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('user-profile-update')
+        data = {
+            'name': ''  # 空の名前は無効
+        }
+        response = self.client.put(url, data, format='json', partial=True)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('name', response.data)
