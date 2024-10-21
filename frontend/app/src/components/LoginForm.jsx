@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { loginUser } from '../features/user/userSlice';
+import { useNavigate, Link } from 'react-router-dom';
 
 const LoginForm = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
@@ -34,10 +36,10 @@ const LoginForm = () => {
             try {
                 // ReduxのloginUserアクションをディスパッチ
                 await dispatch(loginUser({ username: formData.email, password: formData.password })).unwrap();
-    
+                navigate('/');
                 // ログイン成功メッセージを設定
-                setSuccessMessage('ログインに成功しました！');
-                setErrors({});
+                // setSuccessMessage('ログインに成功しました！');
+                // setErrors({});
             } catch (error) {
                 // エラーレスポンスの中身を詳細にログ出力
                 console.log('Full error object:', error);
@@ -65,6 +67,7 @@ const LoginForm = () => {
     };
 
     return (
+        <div>
         <form role="form" onSubmit={handleSubmit}>
             <div>
                 <label htmlFor="email">メールアドレス</label>
@@ -92,6 +95,8 @@ const LoginForm = () => {
             {successMessage && <div role="alert">{successMessage}</div>}
             {errors.form && <div role="alert">{errors.form}</div>}
         </form>
+        <p>未登録ですか？<Link to="/register">新規登録はこちら</Link></p>
+        </div>
     );
 };
 

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { registerUser } from '../features/user/userSlice';
+import { registerUser, loginUser } from '../features/user/userSlice';
+import { useNavigate, Link } from 'react-router-dom';
 
 const RegisterForm = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: '', password: '', user_type: 'student' });
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
@@ -34,10 +36,13 @@ const RegisterForm = () => {
       try {
         // ReduxのregisterUserアクションをディスパッチ
         await dispatch(registerUser(formData)).unwrap();
+        // 新規登録後、ログイン処理を実行
+        await dispatch(loginUser({ username: formData.email, password: formData.password })).unwrap();
+        navigate('/'); 
   
         // 登録成功メッセージを設定
-        setSuccessMessage('登録が完了しました！');
-        setErrors({});
+        //setSuccessMessage('登録が完了しました！');
+        //setErrors({});
       } catch (error) {
         // エラーレスポンスの中身を詳細にログ出力
         console.log('Full error object:', error);
@@ -66,6 +71,7 @@ const RegisterForm = () => {
   
 
   return (
+    <div>
     <form role="form" onSubmit={handleSubmit}>
       <div>
         <label htmlFor="email">メールアドレス</label>
@@ -105,6 +111,8 @@ const RegisterForm = () => {
       {successMessage && <div role="alert">{successMessage}</div>}
       {errors.form && <div role="alert">{errors.form}</div>}
     </form>
+    <p>既に登録済みですか？<Link to="/login">ログインはこちら</Link></p>
+    </div>
   );
 };
 
