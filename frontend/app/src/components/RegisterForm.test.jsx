@@ -87,7 +87,7 @@ describe('RegisterForm Component', () => {
   test('displays error messages on failed registration', async () => {
     // モックAPIレスポンスでエラーを返すように設定
     apiClient.post.mockRejectedValueOnce({
-      response: { data: { email: ['登録に失敗しました'] } },
+      response: { data: { email: ['エラーが発生しました'] } },
     });
 
     renderWithProvider(<RegisterForm />);
