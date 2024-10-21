@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { registerUser, loginUser } from '../features/user/userSlice';
 import { useNavigate, Link } from 'react-router-dom';
+import styles from './styles/RegisterForm.module.css';
 
 const RegisterForm = () => {
   const dispatch = useDispatch();
@@ -22,37 +23,37 @@ const RegisterForm = () => {
     event.preventDefault();
     const newErrors = {};
   
-    // フォームのバリデーション
+    // Form validation
     if (!formData.email) {
-      newErrors.email = 'メールアドレスは必須です';
+      newErrors.email = 'Email is required';
     }
     if (!formData.password) {
-      newErrors.password = 'パスワードは必須です';
+      newErrors.password = 'Password is required';
     }
   
     setErrors(newErrors);
   
     if (Object.keys(newErrors).length === 0) {
       try {
-        // ReduxのregisterUserアクションをディスパッチ
+        // Dispatch registerUser action
         await dispatch(registerUser(formData)).unwrap();
-        // 新規登録後、ログイン処理を実行
+        // Execute login process after registration
         await dispatch(loginUser({ username: formData.email, password: formData.password })).unwrap();
-        navigate('/'); 
+        navigate('/');
   
-        // 登録成功メッセージを設定
-        //setSuccessMessage('登録が完了しました！');
+        // Set success message
+        //setSuccessMessage('Registration successful!');
         //setErrors({});
       } catch (error) {
-        // エラーレスポンスの中身を詳細にログ出力
+        // Log full error response
         console.log('Full error object:', error);
   
-        // エラーメッセージの設定
+        // Set error messages
         try {
           const errorData = JSON.parse(error);
           
           if (typeof errorData === 'object') {
-            // 各フィールドに対応するエラーメッセージを設定
+            // Set error messages for each field
             const dynamicErrors = {};
             Object.entries(errorData).forEach(([key, value]) => {
               dynamicErrors[key] = Array.isArray(value) ? value.join(', ') : value;
@@ -63,7 +64,7 @@ const RegisterForm = () => {
           }
         } catch (e) {
           console.error('Failed to parse error message:', e);
-          setErrors({ form: '登録に失敗しました' });
+          setErrors({ form: 'Registration failed' });
         }
       }
     }
@@ -71,10 +72,11 @@ const RegisterForm = () => {
   
 
   return (
-    <div>
+    <div className={styles.pageContainer}>
+    <div className={styles.formContainer}> 
     <form role="form" onSubmit={handleSubmit}>
-      <div>
-        <label htmlFor="email">メールアドレス</label>
+      <div className={styles.formBlock}>
+        <label htmlFor="email">E-mail</label>
         <input
           id="email"
           name="email"
@@ -82,10 +84,10 @@ const RegisterForm = () => {
           value={formData.email}
           onChange={handleInputChange}
         />
-        {errors.email && <span>{errors.email}</span>}
+        {errors.email && <span className={styles.errorMessage}>{errors.email}</span>}
       </div>
-      <div>
-        <label htmlFor="password">パスワード</label>
+      <div className={styles.formBlock}>
+        <label htmlFor="password">Password</label>
         <input
           id="password"
           name="password"
@@ -93,10 +95,10 @@ const RegisterForm = () => {
           value={formData.password}
           onChange={handleInputChange}
         />
-        {errors.password && <span>{errors.password}</span>}
+        {errors.password && <span className={styles.errorMessage}>{errors.password}</span>}
       </div>
-      <div>
-        <label htmlFor="user_type">ユーザータイプ</label>
+      <div className={styles.formBlock}>
+        <label htmlFor="user_type">User Type</label>
         <select
           id="user_type"
           name="user_type"
@@ -107,11 +109,12 @@ const RegisterForm = () => {
           <option value="teacher">Teacher</option>
         </select>
       </div>
-      <button type="submit">登録</button>
+      <button type="submit">Register</button>
       {successMessage && <div role="alert">{successMessage}</div>}
       {errors.form && <div role="alert">{errors.form}</div>}
     </form>
-    <p>既に登録済みですか？<Link to="/login">ログインはこちら</Link></p>
+    <p>Already registered? <Link to="/login" className={styles.link}>Login here</Link></p>
+    </div>
     </div>
   );
 };

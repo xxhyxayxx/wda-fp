@@ -1,0 +1,76 @@
+/* RegisterForm.module.css */
+.pageContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* ビューポートの高さ全体を使用 */
+    background-color: var(--lavender); /* 全体の背景色を設定 */
+  }
+
+.formContainer {
+  max-width: 440px;
+  padding: 40px 60px;
+  background-color: #fff;
+  border-radius: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+label{
+    display: inline-block;
+    font-size: 1.125rem;
+    width: 90px;
+    font-weight: 700;
+    color: var(--indigo);
+}
+  
+input{
+    padding: 8px 8px;
+    border: 2px solid var(--lavender);
+    border-radius: 4px;
+    width: 200px;
+    font-size: 1rem;
+}
+
+.formBlock{
+    margin: 0 0 12px 0;
+}
+
+button{
+    display: block;
+    margin: 20px auto;
+    width: 200px;
+    border: none;
+    font-size: 1.1rem;
+    padding: 12px 0;
+    border-radius: 4px;
+    background-color: var(--purple);
+    color: #fff;
+    letter-spacing: 0.04rem;
+}
+
+button:hover {
+    opacity: 0.8;
+  }
+
+select{
+    width: 200px;
+    font-size: 1rem;
+    padding: 10px 8px;
+    border: 2px solid var(--lavender);
+    color: var(--indigo);
+    letter-spacing: 0.03rem;
+    border-radius: 4px;
+}
+
+.errorMessage{
+    display: block;
+    margin: 4px 0;
+    color: var(--red);
+}
+
+.link{
+    color: var(--purple);
+}

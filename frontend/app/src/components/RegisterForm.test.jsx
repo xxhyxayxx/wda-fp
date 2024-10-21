@@ -8,17 +8,17 @@ import userReducer from '../features/user/userSlice';
 import { MemoryRouter } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 
-// apiClient のモック
+// Mocking apiClient
 jest.mock('../utils/apiClient');
 
-// useNavigate のモック
+// Mocking useNavigate
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => mockNavigate,
 }));
 
-// Redux ストアを含んだコンポーネントをレンダリングするための関数
+// Function to render component with Redux store
 const renderWithProvider = (component) => {
   const store = configureStore({
     reducer: {
@@ -40,15 +40,15 @@ describe('RegisterForm Component', () => {
   test('renders the form fields', () => {
     renderWithProvider(<RegisterForm />);
 
-    // 各フォームの要素が存在するか確認
-    expect(screen.getByLabelText(/メールアドレス/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/パスワード/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/ユーザータイプ/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /登録/i })).toBeInTheDocument();
+    // Check that form elements exist
+    expect(screen.getByLabelText(/E-mail/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/User Type/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Register/i })).toBeInTheDocument();
   });
 
   test('handles successful registration', async () => {
-    // 成功レスポンスをモック (登録とログインの両方)
+    // Mock successful response (for registration and login)
     apiClient.post.mockImplementation((url) => {
       if (url.includes('/register')) {
         return Promise.resolve({
@@ -65,47 +65,47 @@ describe('RegisterForm Component', () => {
   
     renderWithProvider(<RegisterForm />);
   
-    const emailInput = screen.getByLabelText(/メールアドレス/i);
-    const passwordInput = screen.getByLabelText(/パスワード/i);
-    const userTypeSelect = screen.getByLabelText(/ユーザータイプ/i);
-    const registerButton = screen.getByRole('button', { name: /登録/i });
+    const emailInput = screen.getByLabelText(/E-mail/i);
+    const passwordInput = screen.getByLabelText(/Password/i);
+    const userTypeSelect = screen.getByLabelText(/User Type/i);
+    const registerButton = screen.getByRole('button', { name: /Register/i });
   
-    // 入力フィールドにデータを入力
+    // Fill in the input fields
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
     fireEvent.change(userTypeSelect, { target: { value: 'teacher' } });
   
-    // 登録ボタンをクリック
+    // Click the register button
     fireEvent.click(registerButton);
   
-    // navigate('/')が呼び出されることを確認する
+    // Check that navigate('/') is called
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/');
     });
   });  
 
   test('displays error messages on failed registration', async () => {
-    // モックAPIレスポンスでエラーを返すように設定
+    // Set mock API response to return an error
     apiClient.post.mockRejectedValueOnce({
-      response: { data: { email: ['エラーが発生しました'] } },
+      response: { data: { email: ['Registration failed'] } },
     });
 
     renderWithProvider(<RegisterForm />);
 
-    const emailInput = screen.getByLabelText(/メールアドレス/i);
-    const passwordInput = screen.getByLabelText(/パスワード/i);
-    const registerButton = screen.getByRole('button', { name: /登録/i });
+    const emailInput = screen.getByLabelText(/E-mail/i);
+    const passwordInput = screen.getByLabelText(/Password/i);
+    const registerButton = screen.getByRole('button', { name: /Register/i });
 
-    // 入力フィールドにデータを入力
+    // Fill in the input fields
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
 
-    // 登録ボタンをクリック
+    // Click the register button
     fireEvent.click(registerButton);
 
-    // エラーメッセージが表示されていることを確認
+    // Check that the error message is displayed
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('登録に失敗しました');
+      expect(screen.getByRole('alert')).toHaveTextContent('Registration failed');
     });
   });
 });
