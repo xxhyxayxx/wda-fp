@@ -8,6 +8,7 @@ import Home from './components/Home';
 import { store } from './store';
 import PrivateRoute from './routes/PrivateRoute';
 import './styles/global.css';
+import ProfileUpdateForm from './components/ProfileUpdateForm'; 
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -21,6 +22,14 @@ createRoot(document.getElementById('root')).render(
             element={
               <PrivateRoute>
                 <Home />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/account"
+            element={
+              <PrivateRoute>
+                <ProfileUpdateForm />
               </PrivateRoute>
             }
           />

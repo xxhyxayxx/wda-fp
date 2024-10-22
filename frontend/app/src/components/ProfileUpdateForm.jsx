@@ -12,12 +12,18 @@ const ProfileUpdateForm = () => {
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
+    console.log('Fetching profile...');
+    dispatch(fetchProfile());
+  }, [dispatch]);  
+
+  useEffect(() => {
     if (userInfo) {
-      setFormData({ name: userInfo.name, user_type: userInfo.user_type });
-    } else {
-      dispatch(fetchProfile());
+      setFormData({
+        name: userInfo.name || '',
+        user_type: userInfo.user_type || 'student',
+      });
     }
-  }, [userInfo, dispatch]);
+  }, [userInfo]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -41,12 +47,20 @@ const ProfileUpdateForm = () => {
       try {
         await dispatch(updateProfile(formData)).unwrap();
         setErrors({ form: 'Profile updated successfully' });
-        // navigate('/profile');  // 成功メッセージを確認後にリダイレクトしたい場合はこの行をコメントアウト解除
+        // navigate('/profile');
       } catch (err) {
         setErrors({ form: err.message });
       }
     }
   };
+
+  if (status === 'loading') {
+    return <p>Loading...</p>;
+  }
+
+  if (error) {
+    return <p className={styles.errorMessage}>Error: {error}</p>;
+  }
 
   return (
     <div className={styles.pageContainer}>
@@ -59,7 +73,7 @@ const ProfileUpdateForm = () => {
               id="name"
               name="name"
               type="text"
-              value={formData.name}
+              value={formData.name || ''}
               onChange={handleInputChange}
             />
             {errors.name && <span className={styles.errorMessage}>{errors.name}</span>}
@@ -69,7 +83,7 @@ const ProfileUpdateForm = () => {
             <select
               id="user_type"
               name="user_type"
-              value={formData.user_type}
+              value={formData.user_type || 'student'}
               onChange={handleInputChange}
             >
               <option value="student">Student</option>

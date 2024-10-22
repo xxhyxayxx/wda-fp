@@ -84,7 +84,7 @@ export const fetchProfile = createAsyncThunk(
   'user/fetchProfile',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await apiClient.get('/profile/');
+      const response = await apiClient.get('/profile/update/');
       return response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'プロフィールの取得に失敗しました');
