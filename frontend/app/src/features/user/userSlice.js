@@ -80,6 +80,31 @@ export const logoutUser = createAsyncThunk(
   }
 );
 
+export const fetchProfile = createAsyncThunk(
+  'user/fetchProfile',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get('/profile/');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'プロフィールの取得に失敗しました');
+    }
+  }
+);
+
+// 新しいupdateProfileアクションを追加
+export const updateProfile = createAsyncThunk(
+  'user/updateProfile',
+  async (userData, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.patch('/profile/update/', userData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.message || 'プロフィールの更新に失敗しました');
+    }
+  }
+);
+
 const userSlice = createSlice({
   name: 'user',
   initialState,
@@ -125,6 +150,32 @@ const userSlice = createSlice({
         state.userInfo = null;
       })
       .addCase(logoutUser.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
+      // fetchProfile
+      .addCase(fetchProfile.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(fetchProfile.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.userInfo = action.payload;
+      })
+      .addCase(fetchProfile.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
+      // updateProfile
+      .addCase(updateProfile.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.userInfo = { ...state.userInfo, ...action.payload };
+      })
+      .addCase(updateProfile.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
       });

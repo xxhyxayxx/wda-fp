@@ -1,4 +1,4 @@
-import userReducer, { registerUser, loginUser, logoutUser } from './userSlice';
+import userReducer, { registerUser, loginUser, logoutUser, fetchProfile, updateProfile } from './userSlice';
 import { configureStore } from '@reduxjs/toolkit';
 import apiClient from '../../utils/apiClient';
 import { expect } from '@jest/globals';
@@ -95,6 +95,76 @@ describe('userSlice - logoutUser', () => {
     apiClient.post.mockRejectedValueOnce(new Error(mockErrorMessage));
 
     await store.dispatch(logoutUser());
+
+    const state = store.getState().user;
+    expect(state.status).toBe('failed');
+    expect(state.error).toBe(mockErrorMessage);
+  });
+});
+
+// fetchProfileの非同期アクションに対するテスト
+describe('userSlice - fetchProfile', () => {
+  let store;
+
+  beforeEach(() => {
+    store = configureStore({
+      reducer: {
+        user: userReducer,
+      },
+    });
+  });
+
+  it('プロフィール取得成功時の処理を確認する', async () => {
+    const mockProfileData = { name: 'testUser', user_type: 'student' };
+    apiClient.get.mockResolvedValueOnce({ data: mockProfileData });
+
+    await store.dispatch(fetchProfile());
+
+    const state = store.getState().user;
+    expect(state.status).toBe('succeeded');
+    expect(state.userInfo).toEqual(mockProfileData);
+  });
+
+  it('プロフィール取得失敗時の処理を確認する', async () => {
+    const mockErrorMessage = 'プロフィール取得に失敗しました';
+    apiClient.get.mockRejectedValueOnce(new Error(mockErrorMessage));
+
+    await store.dispatch(fetchProfile());
+
+    const state = store.getState().user;
+    expect(state.status).toBe('failed');
+    expect(state.error).toBe(mockErrorMessage);
+  });
+});
+
+// updateProfileの非同期アクションに対するテスト
+describe('userSlice - updateProfile', () => {
+  let store;
+
+  beforeEach(() => {
+    store = configureStore({
+      reducer: {
+        user: userReducer,
+      },
+    });
+  });
+
+  it('プロフィール更新成功時の処理を確認する', async () => {
+    const mockProfileData = { name: 'updatedUser', user_type: 'teacher' };
+    apiClient.patch.mockResolvedValueOnce({ data: mockProfileData });
+
+    await store.dispatch(updateProfile({ name: 'updatedUser', user_type: 'teacher' }));
+
+    const state = store.getState().user;
+    expect(state.status).toBe('succeeded');
+    expect(state.userInfo).toEqual(expect.objectContaining(mockProfileData));
+  });
+
+  it('プロフィール更新失敗時の処理を確認する', async () => {
+    const mockErrorMessage = 'プロフィールの更新に失敗しました';
+    apiClient.patch.mockRejectedValueOnce(new Error(mockErrorMessage));
+
+    await store.dispatch(updateProfile({ name: 'updatedUser', user_type: 'teacher' }));
 
     const state = store.getState().user;
     expect(state.status).toBe('failed');
