@@ -22,10 +22,13 @@ class UserProfileUpdateAPIView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
     def update(self, request, *args, **kwargs):
-        # プロフィール画像が空の場合、Noneに設定
+        # リクエストデータをコピーし、画像が空の場合の処理を変更
         data = request.data.copy()
-        if data.get('profile_image') == '':
-            data['profile_image'] = None
+
+        # 画像が送信されなかった場合には、profile_image をそのままにする
+        if 'profile_image' not in data or data.get('profile_image') == '':
+            data.pop('profile_image', None)  # profile_imageを削除して変更しない
+
         serializer = self.get_serializer(self.get_object(), data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
