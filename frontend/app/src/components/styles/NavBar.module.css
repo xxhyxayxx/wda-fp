@@ -1,5 +1,5 @@
 .navMenu{
-    padding: 20px 40px;
+    padding: 10px 40px;
     background-color: #fff;
     display: flex;
     justify-content: space-between;
@@ -11,4 +11,13 @@
     font-weight: 700;
     font-family: "Quicksand", sans-serif;
     color: var(--purple);
+}
+
+.navLinks{
+    display: flex;
+    align-items: center;
+}
+
+.navLinks li:first-child{
+    margin: 0 40px 0 0;
 }

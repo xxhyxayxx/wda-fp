@@ -1,0 +1,54 @@
+.pageContainer{
+    max-width: 600px;
+    background-color: #fff;
+    display: flex;
+    justify-content: center;
+    margin: 80px auto;
+    border-radius: 12px;
+    padding: 40px 0 20px;
+}
+
+.title{
+    font-family: "Quicksand", sans-serif;
+    font-size: 2.4rem;
+    color: var(--purple);
+    margin: 0 0 24px;
+    letter-spacing: 0.1rem;
+}
+
+.submitBtn{
+    display: block;
+    margin: 20px auto;
+    width: 200px;
+    border: none;
+    font-size: 1.1rem;
+    padding: 12px 0;
+    border-radius: 4px;
+    background-color: var(--purple);
+    color: #fff;
+    letter-spacing: 0.04rem;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+label{
+    display: inline-block;
+    font-size: 1.125rem;
+    width: 90px;
+    font-weight: 700;
+    color: var(--indigo);
+}
+  
+input{
+    padding: 8px 8px;
+    border: 2px solid var(--lavender);
+    border-radius: 4px;
+    width: 200px;
+    font-size: 1rem;
+}
+
+.formBlock{
+    margin: 0 0 12px 0;
+}

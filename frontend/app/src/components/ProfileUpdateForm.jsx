@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile, fetchProfile } from '../features/user/userSlice';
 import styles from './styles/ProfileUpdateForm.module.css';
+import NavBar from './NavBar';
 
 const ProfileUpdateForm = () => {
   const dispatch = useDispatch();
@@ -63,6 +64,8 @@ const ProfileUpdateForm = () => {
   }
 
   return (
+    <div>
+        <NavBar />
     <div className={styles.pageContainer}>
       <div className={styles.formContainer}>
         <h1 className={styles.title}>Update Profile</h1>
@@ -94,6 +97,7 @@ const ProfileUpdateForm = () => {
           {errors.form && <div role="alert" className={styles.errorMessage}>{errors.form}</div>}
         </form>
       </div>
+    </div>
     </div>
   );
 };
