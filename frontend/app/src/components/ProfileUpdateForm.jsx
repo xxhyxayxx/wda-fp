@@ -9,14 +9,14 @@ const ProfileUpdateForm = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { userInfo, status, error } = useSelector((state) => state.user);
-  const [formData, setFormData] = useState({ name: '', user_type: 'student' });
+  const [formData, setFormData] = useState({ name: '', email: '', user_type: 'student' });
   const [profileImage, setProfileImage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [fileName, setFileName] = useState('');
   const [previousFileName, setPreviousFileName] = useState('');
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false); // フォーム送信状態を管理するフラグ
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     dispatch(fetchProfile());
@@ -26,6 +26,7 @@ const ProfileUpdateForm = () => {
     if (userInfo) {
       setFormData({
         name: userInfo.name || '',
+        email: userInfo.email || '',
         user_type: userInfo.user_type || 'student',
       });
       if (userInfo.profile_image) {
@@ -42,10 +43,10 @@ const ProfileUpdateForm = () => {
   }, [userInfo]);
 
   useEffect(() => {
-    if (status === 'succeeded' && isSubmitting) { // 送信後にのみ成功メッセージをセット
+    if (status === 'succeeded' && isSubmitting) {
       setSuccessMessage('Profile updated successfully');
       setErrors({});
-      setIsSubmitting(false); // フォーム送信状態をリセット
+      setIsSubmitting(false);
     }
   }, [status, isSubmitting]);
 
@@ -72,39 +73,65 @@ const ProfileUpdateForm = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     const newErrors = {};
-
+  
+    // フォームのバリデーション
     if (!formData.name) {
       newErrors.name = 'Name is required';
     }
-
+  
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Invalid email format';
+    }
+  
     setErrors(newErrors);
-    setSuccessMessage(''); // フォーム送信時に成功メッセージをリセット
-
+  
     if (Object.keys(newErrors).length === 0) {
       try {
-        setIsSubmitting(true); // フォーム送信状態をセット
+        setIsSubmitting(true);
         const updatedData = new FormData();
         updatedData.append('name', formData.name);
+        updatedData.append('email', formData.email);
         updatedData.append('user_type', formData.user_type);
         if (profileImage) {
           updatedData.append('profile_image', profileImage);
         }
-
+  
+        // プロフィールの更新をディスパッチ
         await dispatch(updateProfile(updatedData)).unwrap();
         setErrors({});
-      } catch (err) {
-        setErrors({ form: err.message });
-        setIsSubmitting(false); // エラー時に送信状態をリセット
+        setSuccessMessage('Profile updated successfully');
+      } catch (error) {
+        // Log full error response
+        console.log('Full error object:', error);
+  
+        // error.messageを詳細にログ出力
+        try {
+          const errorData = JSON.parse(error);
+          if (typeof errorData === 'object') {
+            // Set error messages for each field
+            const dynamicErrors = {};
+            Object.entries(errorData).forEach(([key, value]) => {
+              dynamicErrors[key] = Array.isArray(value) ? value.join(', ') : value;
+            });
+            setErrors(dynamicErrors);
+          } else {
+            setErrors({ form: errorData });
+          }
+          
+        } catch (parseError) {
+          console.error('Failed to parse error message:', parseError);
+          setErrors({ form: 'Profile update failed' });
+        }
+        setIsSubmitting(false);
       }
     }
   };
+  
 
   if (status === 'loading') {
     return <p>Loading...</p>;
-  }
-
-  if (error) {
-    return <p className={styles.errorMessage}>Error: {error}</p>;
   }
 
   return (
@@ -151,6 +178,19 @@ const ProfileUpdateForm = () => {
               />
               {errors.name && <span className={styles.errorMessage}>{errors.name}</span>}
             </div>
+
+            <div className={styles.formBlock}>
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email || ''}
+                onChange={handleInputChange}
+              />
+              {errors.email && <span className={styles.errorMessage}>{errors.email}</span>}
+            </div>
+
             <div className={styles.formBlock}>
               <label htmlFor="user_type">User Type</label>
               <select
