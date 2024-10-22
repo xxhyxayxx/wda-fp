@@ -1,10 +1,13 @@
 // NavBar.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import styles from './styles/NavBar.module.css';
 import LogoutButton from './LogoutButton';
 
 const NavBar = () => {
+  const { userInfo } = useSelector((state) => state.user);
+
   return (
     <nav className={styles.navMenu}>
       <Link to="/">
@@ -12,10 +15,20 @@ const NavBar = () => {
       </Link>
       <ul className={styles.navLinks}>
         <li>
-          <Link to="/account">Account</Link>
+          <Link to="/account" className={styles.profileLink}>
+            {userInfo?.profile_image ? (
+              <img 
+                src={userInfo.profile_image} 
+                alt="Profile" 
+                className={styles.profileImage} 
+              />
+            ) : (
+              <span>Account</span> // プロフィール画像がない場合の代替テキスト
+            )}
+          </Link>
         </li>
         <li>
-          <LogoutButton/>
+          <LogoutButton />
         </li>
       </ul>
     </nav>
