@@ -16,14 +16,12 @@ const NavBar = () => {
       <ul className={styles.navLinks}>
         <li>
           <Link to="/account" className={styles.profileLink}>
-            {userInfo?.profile_image ? (
+            {userInfo?.profile_image && (
               <img 
                 src={userInfo.profile_image} 
                 alt="Profile" 
                 className={styles.profileImage} 
               />
-            ) : (
-              <span>Account</span> // プロフィール画像がない場合の代替テキスト
             )}
           </Link>
         </li>
