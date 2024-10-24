@@ -165,23 +165,49 @@ class UserProfileSerializerTest(TestCase):
         updated_user = serializer.save()
         self.assertEqual(updated_user.profile_image.name, 'profile_images/default_profile.png')
 
-class ChangePasswordSerializer(serializers.Serializer):
-    current_password = serializers.CharField(write_only=True, required=True)
-    new_password = serializers.CharField(write_only=True, required=True)
+class ChangePasswordSerializerTest(TestCase):
+    def setUp(self):
+        self.user = CustomUser.objects.create_user(
+            email='testuser@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.factory = RequestFactory()
 
-    def validate_current_password(self, value):
-        user = self.context['request'].user
-        if not user.check_password(value):
-            raise serializers.ValidationError("Current password is incorrect.")
-        return value
+    def test_change_password_with_valid_data(self):
+        """正しいデータでパスワードが正常に変更されるかをテスト"""
+        data = {
+            'current_password': 'testpassword',
+            'new_password': 'newtestpassword',
+        }
+        request = self.factory.post('/change-password/')
+        request.user = self.user
+        serializer = ChangePasswordSerializer(data=data, context={'request': request})
+        self.assertTrue(serializer.is_valid())
+        serializer.save()
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('newtestpassword'))
 
-    def validate(self, data):
-        if data['current_password'] == data['new_password']:
-            raise serializers.ValidationError("New password must be different from the current password.")
-        return data
+    def test_change_password_with_incorrect_current_password(self):
+        """現在のパスワードが間違っている場合にエラーが返されるかをテスト"""
+        data = {
+            'current_password': 'wrongpassword',
+            'new_password': 'newtestpassword',
+        }
+        request = self.factory.post('/change-password/')
+        request.user = self.user
+        serializer = ChangePasswordSerializer(data=data, context={'request': request})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('current_password', serializer.errors)
 
-    def save(self, **kwargs):
-        user = self.context['request'].user
-        user.set_password(self.validated_data['new_password'])
-        user.save(update_fields=['password'])  # パスワードのみを保存
-        return user
+    def test_change_password_with_same_password(self):
+        """新しいパスワードが現在のパスワードと同じ場合にエラーが返されるかをテスト"""
+        data = {
+            'current_password': 'testpassword',
+            'new_password': 'testpassword',
+        }
+        request = self.factory.post('/change-password/')
+        request.user = self.user
+        serializer = ChangePasswordSerializer(data=data, context={'request': request})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('non_field_errors', serializer.errors)

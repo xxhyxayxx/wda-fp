@@ -44,3 +44,8 @@ class ChangePasswordSerializer(serializers.Serializer):
         if data['current_password'] == data['new_password']:
             raise serializers.ValidationError("New password must be different from the current password.")
         return data
+
+    def save(self, **kwargs):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save(update_fields=['password'])  # パスワードのみを保存

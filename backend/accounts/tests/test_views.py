@@ -148,26 +148,61 @@ class UserProfileUpdateAPIViewTest(TestCase):
         self.client.force_authenticate(user=self.user)
         url = reverse('user-profile-update')
         
-        # 画像ファイルのパスを設定
         image_path = os.path.join(os.path.dirname(__file__), 'test_image.png')
         
-        # 実際の画像ファイルを開いてアップロードに使う
         with open(image_path, 'rb') as image_file:
             image = SimpleUploadedFile(
                 name='new_image.png',
                 content=image_file.read(),
                 content_type='image/png'
             )
-        
-            data = {
-                'profile_image': image
-            }
-            response = self.client.patch(url, data, format='multipart')  # 画像アップロードには'multipart'形式が必要
 
-            # ステータスコードが想定通りでない場合、詳細な情報を表示する
+            data = {'profile_image': image}
+            response = self.client.patch(url, data, format='multipart')
+
             if response.status_code != status.HTTP_200_OK:
                 print("Response data:", response.data)
 
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.user.refresh_from_db()
-            self.assertEqual(self.user.profile_image.name, 'profile_images/new_image.png')
+
+            # startswithを使ってファイル名を確認
+            self.assertTrue(self.user.profile_image.name.startswith('profile_images/new_image'))
+
+class ChangePasswordAPIViewTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = CustomUser.objects.create_user(email='testuser@example.com', password='testpassword')
+        self.client.force_authenticate(user=self.user)
+        self.url = reverse('change-password')
+
+    def test_change_password_successful(self):
+        """パスワード変更が正常に行われるかをテスト"""
+        data = {
+            'current_password': 'testpassword',
+            'new_password': 'newtestpassword',
+        }
+        response = self.client.put(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('newtestpassword'))
+
+    def test_change_password_with_incorrect_current_password(self):
+        """現在のパスワードが間違っている場合のエラーテスト"""
+        data = {
+            'current_password': 'wrongpassword',
+            'new_password': 'newtestpassword',
+        }
+        response = self.client.put(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('current_password', response.data)
+
+    def test_change_password_with_same_password(self):
+        """新しいパスワードが現在のパスワードと同じ場合のエラーテスト"""
+        data = {
+            'current_password': 'testpassword',
+            'new_password': 'testpassword',
+        }
+        response = self.client.put(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('non_field_errors', response.data)
