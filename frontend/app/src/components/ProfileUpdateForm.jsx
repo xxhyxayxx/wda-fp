@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { updateProfile, fetchProfile } from '../features/user/userSlice';
 import styles from './styles/ProfileUpdateForm.module.css';
 import NavBar from './NavBar';
@@ -202,6 +202,11 @@ const ProfileUpdateForm = () => {
                 <option value="student">Student</option>
                 <option value="teacher">Teacher</option>
               </select>
+            </div>
+            <div className={styles.formBlock}>
+              <Link to="/change-password" className={styles.changePasswordLink}>
+                Change Password
+              </Link>
             </div>
             <button type="submit" className={styles.submitBtn}>Update</button>
             {errors.form && <div role="alert" className={styles.errorMessage}>{errors.form}</div>}

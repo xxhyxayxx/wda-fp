@@ -9,6 +9,7 @@ import { store } from './store';
 import PrivateRoute from './routes/PrivateRoute';
 import './styles/global.css';
 import ProfileUpdateForm from './components/ProfileUpdateForm'; 
+import ChangePasswordForm from './components/ChangePasswordForm';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -30,6 +31,14 @@ createRoot(document.getElementById('root')).render(
             element={
               <PrivateRoute>
                 <ProfileUpdateForm />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/change-password"
+            element={
+              <PrivateRoute>
+                <ChangePasswordForm />
               </PrivateRoute>
             }
           />
