@@ -1,6 +1,8 @@
 from django.test import TestCase
 from accounts.models import CustomUser
-from accounts.serializers import UserRegistrationSerializer, UserProfileSerializer
+from accounts.serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer
+from django.test import RequestFactory
+from rest_framework import serializers
 
 class UserRegistrationSerializerTest(TestCase):
     def test_user_registration_serializer_with_valid_data(self):
@@ -97,8 +99,6 @@ class UserRegistrationSerializerTest(TestCase):
         user = serializer.save()
         self.assertEqual(user.name, 'Test User')
 
-from django.test import RequestFactory
-
 class UserProfileSerializerTest(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
@@ -164,3 +164,24 @@ class UserProfileSerializerTest(TestCase):
         self.assertTrue(serializer.is_valid())
         updated_user = serializer.save()
         self.assertEqual(updated_user.profile_image.name, 'profile_images/default_profile.png')
+
+class ChangePasswordSerializer(serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, required=True)
+
+    def validate_current_password(self, value):
+        user = self.context['request'].user
+        if not user.check_password(value):
+            raise serializers.ValidationError("Current password is incorrect.")
+        return value
+
+    def validate(self, data):
+        if data['current_password'] == data['new_password']:
+            raise serializers.ValidationError("New password must be different from the current password.")
+        return data
+
+    def save(self, **kwargs):
+        user = self.context['request'].user
+        user.set_password(self.validated_data['new_password'])
+        user.save(update_fields=['password'])  # パスワードのみを保存
+        return user
