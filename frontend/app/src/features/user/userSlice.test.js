@@ -1,4 +1,4 @@
-import userReducer, { registerUser, loginUser, logoutUser, fetchProfile, updateProfile } from './userSlice';
+import userReducer, { registerUser, loginUser, logoutUser, fetchProfile, updateProfile, changePassword } from './userSlice';
 import { configureStore } from '@reduxjs/toolkit';
 import apiClient from '../../utils/apiClient';
 import { expect } from '@jest/globals';
@@ -165,6 +165,40 @@ describe('userSlice - updateProfile', () => {
     apiClient.patch.mockRejectedValueOnce(new Error(mockErrorMessage));
 
     await store.dispatch(updateProfile({ name: 'updatedUser', user_type: 'teacher' }));
+
+    const state = store.getState().user;
+    expect(state.status).toBe('failed');
+    expect(state.error).toBe(mockErrorMessage);
+  });
+});
+
+// changePasswordの非同期アクションに対するテスト
+describe('userSlice - changePassword', () => {
+  let store;
+
+  beforeEach(() => {
+    store = configureStore({
+      reducer: {
+        user: userReducer,
+      },
+    });
+  });
+
+  it('パスワード変更成功時の処理を確認する', async () => {
+    apiClient.put.mockResolvedValueOnce({}); // 成功時のレスポンスをモック
+
+    await store.dispatch(changePassword({ current_password: 'oldPass', new_password: 'newPass' }));
+
+    const state = store.getState().user;
+    expect(state.status).toBe('succeeded');
+    expect(state.error).toBeNull();
+  });
+
+  it('パスワード変更失敗時の処理を確認する', async () => {
+    const mockErrorMessage = 'パスワードの変更に失敗しました';
+    apiClient.put.mockRejectedValueOnce(new Error(mockErrorMessage)); // エラー時のレスポンスをモック
+
+    await store.dispatch(changePassword({ current_password: 'oldPass', new_password: 'newPass' }));
 
     const state = store.getState().user;
     expect(state.status).toBe('failed');
