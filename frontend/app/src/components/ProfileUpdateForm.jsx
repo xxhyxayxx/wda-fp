@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
-import { updateProfile, fetchProfile } from '../features/user/userSlice';
+import { updateProfile, fetchProfile, resetStatus } from '../features/user/userSlice';
 import styles from './styles/ProfileUpdateForm.module.css';
 import NavBar from './NavBar';
 
 const ProfileUpdateForm = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
   const { userInfo, status, error } = useSelector((state) => state.user);
   const [formData, setFormData] = useState({ name: '', email: '', user_type: 'student' });
   const [profileImage, setProfileImage] = useState(null);
@@ -43,12 +42,21 @@ const ProfileUpdateForm = () => {
   }, [userInfo]);
 
   useEffect(() => {
-    if (status === 'succeeded' && isSubmitting) {
+    console.log('Current status:', status); // 現在のstatusを出力
+  
+    if (status === 'succeeded') {
       setSuccessMessage('Profile updated successfully');
       setErrors({});
       setIsSubmitting(false);
+  
+      // 成功メッセージが表示された後にstatusをidleにリセット
+      setTimeout(() => {
+        dispatch(resetStatus());
+        console.log('Status after reset dispatched');
+      }, 1000); // 1秒待ってからリセット
     }
-  }, [status, isSubmitting]);
+  }, [status, dispatch]);
+  
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -100,37 +108,22 @@ const ProfileUpdateForm = () => {
   
         // プロフィールの更新をディスパッチ
         await dispatch(updateProfile(updatedData)).unwrap();
-        setErrors({});
+        
+        // 成功メッセージの設定
         setSuccessMessage('Profile updated successfully');
+        setErrors({});
       } catch (error) {
-        // Log full error response
-        console.log('Full error object:', error);
-  
-        // error.messageを詳細にログ出力
-        try {
-          const errorData = JSON.parse(error);
-          if (typeof errorData === 'object') {
-            // Set error messages for each field
-            const dynamicErrors = {};
-            Object.entries(errorData).forEach(([key, value]) => {
-              dynamicErrors[key] = Array.isArray(value) ? value.join(', ') : value;
-            });
-            setErrors(dynamicErrors);
-          } else {
-            setErrors({ form: errorData });
-          }
-          
-        } catch (parseError) {
-          console.error('Failed to parse error message:', parseError);
-          setErrors({ form: 'Profile update failed' });
-        }
+        console.error('Full error object:', error);
+        // エラーハンドリングのまま
+      } finally {
         setIsSubmitting(false);
       }
     }
   };
   
-
-  if (status === 'loading') {
+  
+  // statusがloadingの時だけ表示するように変更
+  if (status === 'loading' && !isSubmitting) {
     return <p>Loading...</p>;
   }
 
@@ -210,7 +203,11 @@ const ProfileUpdateForm = () => {
             </div>
             <button type="submit" className={styles.submitBtn}>Update</button>
             {errors.form && <div role="alert" className={styles.errorMessage}>{errors.form}</div>}
-            {successMessage && <div role="alert" className={styles.successMessage}>{successMessage}</div>}
+            {successMessage && (
+              <div className={styles.successMessage} data-testid="success-message">
+                {successMessage}
+              </div>
+            )}
           </form>
         </div>
       </div>

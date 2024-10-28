@@ -65,7 +65,6 @@ export const loginUser = createAsyncThunk(
   }
 );
 
-
 export const logoutUser = createAsyncThunk(
   'user/logoutUser',
   async (_, { rejectWithValue }) => {
@@ -92,7 +91,6 @@ export const fetchProfile = createAsyncThunk(
   }
 );
 
-// 新しいupdateProfileアクションを追加
 export const updateProfile = createAsyncThunk(
   'user/updateProfile',
   async (userData, { rejectWithValue }) => {
@@ -120,7 +118,12 @@ export const changePassword = createAsyncThunk(
 const userSlice = createSlice({
   name: 'user',
   initialState,
-  reducers: {},
+  reducers: {
+    // statusをリセットするアクションを追加
+    resetStatus: (state) => {
+      state.status = 'idle';
+    },
+  },
   extraReducers: (builder) => {
     builder
       // Register
@@ -131,10 +134,12 @@ const userSlice = createSlice({
       .addCase(registerUser.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.userInfo = action.payload;
+        state.status = 'idle';
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
+        state.status = 'idle';
       })
       // Login
       .addCase(loginUser.pending, (state) => {
@@ -145,11 +150,13 @@ const userSlice = createSlice({
         state.status = 'succeeded';
         state.isLoggedIn = true;
         state.userInfo = action.payload;
+        state.status = 'idle';
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
         state.isLoggedIn = false;
+        state.status = 'idle';
       })
       // Logout
       .addCase(logoutUser.pending, (state) => {
@@ -160,10 +167,12 @@ const userSlice = createSlice({
         state.status = 'succeeded';
         state.isLoggedIn = false;
         state.userInfo = null;
+        state.status = 'idle';
       })
       .addCase(logoutUser.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
+        state.status = 'idle';
       })
       // fetchProfile
       .addCase(fetchProfile.pending, (state) => {
@@ -173,16 +182,19 @@ const userSlice = createSlice({
       .addCase(fetchProfile.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.userInfo = action.payload;
+        state.status = 'idle';
       })
       .addCase(fetchProfile.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
+        state.status = 'idle';
       })
       // updateProfile
       .addCase(updateProfile.pending, (state) => {
         state.status = 'loading';
         state.error = null;
       })
+      // updateProfile.fulfilledの修正
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.userInfo = { ...state.userInfo, ...action.payload };
@@ -198,12 +210,17 @@ const userSlice = createSlice({
       })
       .addCase(changePassword.fulfilled, (state) => {
         state.status = 'succeeded';
+        state.status = 'idle';
       })
       .addCase(changePassword.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
+        state.status = 'idle';
       });
   },
 });
+
+// resetStatusアクションをエクスポート
+export const { resetStatus } = userSlice.actions;
 
 export default userSlice.reducer;

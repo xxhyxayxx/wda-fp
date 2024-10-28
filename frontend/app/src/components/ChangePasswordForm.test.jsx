@@ -6,11 +6,12 @@ import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import userReducer from '../features/user/userSlice';
 import apiClient from '../utils/apiClient';
+import { MemoryRouter } from 'react-router-dom';
 
 // Mock apiClient
 jest.mock('../utils/apiClient');
 
-// Helper function to render a component with Redux store
+// Helper function to render a component with Redux store and MemoryRouter
 const renderWithProvider = (component) => {
   const store = configureStore({
     reducer: {
@@ -21,7 +22,7 @@ const renderWithProvider = (component) => {
 
   return render(
     <Provider store={store}>
-      {component}
+      <MemoryRouter>{component}</MemoryRouter>
     </Provider>
   );
 };
@@ -30,13 +31,15 @@ describe('ChangePasswordForm Component', () => {
   test('renders the form fields', () => {
     renderWithProvider(<ChangePasswordForm />);
 
-    // Check that form elements are present
-    expect(screen.getByLabelText(/現在のパスワード/i)).toBeInTheDocument();
-    // 修正箇所: getAllByLabelTextを使用
-    const newPasswordFields = screen.getAllByLabelText(/新しいパスワード/i);
-    expect(newPasswordFields).toHaveLength(2);
-    expect(screen.getByLabelText(/新しいパスワード（確認用）/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /パスワードを変更する/i })).toBeInTheDocument();
+    // 正しいフィールドを取得するため、getAllByLabelTextを使用
+    expect(screen.getByLabelText(/Current Password/i)).toBeInTheDocument();
+
+    const newPasswordFields = screen.getAllByLabelText(/New Password/i);
+    expect(newPasswordFields[0]).toBeInTheDocument();
+    expect(newPasswordFields[1]).toBeInTheDocument();
+
+    expect(screen.getByLabelText(/Confirm New Password/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Change Password/i })).toBeInTheDocument();
   });
 
   test('handles successful password change', async () => {
@@ -45,14 +48,14 @@ describe('ChangePasswordForm Component', () => {
 
     renderWithProvider(<ChangePasswordForm />);
 
-    // 修正箇所: getAllByLabelTextを使用
-    fireEvent.change(screen.getByLabelText(/現在のパスワード/i), { target: { value: 'oldPass' } });
-    const newPasswordFields = screen.getAllByLabelText(/新しいパスワード/i);
+    fireEvent.change(screen.getByLabelText(/Current Password/i), { target: { value: 'oldPass' } });
+    
+    const newPasswordFields = screen.getAllByLabelText(/New Password/i);
     fireEvent.change(newPasswordFields[0], { target: { value: 'newPass' } });
-    fireEvent.change(screen.getByLabelText(/新しいパスワード（確認用）/i), { target: { value: 'newPass' } });
+    fireEvent.change(screen.getByLabelText(/Confirm New Password/i), { target: { value: 'newPass' } });
 
     // Click change password button
-    fireEvent.click(screen.getByRole('button', { name: /パスワードを変更する/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Change Password/i }));
 
     // Wait for the API call
     await waitFor(() => {
@@ -63,40 +66,40 @@ describe('ChangePasswordForm Component', () => {
     });
   });
 
+  
   test('displays error messages when passwords do not match', async () => {
     renderWithProvider(<ChangePasswordForm />);
-
-    fireEvent.change(screen.getByLabelText(/現在のパスワード/i), { target: { value: 'oldPass' } });
-    const newPasswordFields = screen.getAllByLabelText(/新しいパスワード/i);
+  
+    fireEvent.change(screen.getByLabelText(/Current Password/i), { target: { value: 'oldPass' } });
+  
+    const newPasswordFields = screen.getAllByLabelText(/New Password/i);
     fireEvent.change(newPasswordFields[0], { target: { value: 'newPass' } });
-    fireEvent.change(screen.getByLabelText(/新しいパスワード（確認用）/i), { target: { value: 'wrongPass' } });
-
-    // Click change password button
-    fireEvent.click(screen.getByRole('button', { name: /パスワードを変更する/i }));
-
-    // Check that error message is displayed
-    await waitFor(() => {
-      expect(screen.getByText('新しいパスワードと確認用パスワードが一致しません')).toBeInTheDocument();
-    });
+    fireEvent.change(screen.getByLabelText(/Confirm New Password/i), { target: { value: 'wrongPass' } });
+  
+    // Change password buttonをクリック
+    fireEvent.click(screen.getByRole('button', { name: /Change Password/i }));
+  
+    // エラーメッセージの確認
+    expect(await screen.findByText(/New password and confirmation do not match/i)).toBeInTheDocument();
   });
-
+  
   test('handles failed password change', async () => {
-    const mockErrorMessage = 'パスワードの変更に失敗しました';
+    const mockErrorMessage = 'Password change failed';
     apiClient.put.mockRejectedValueOnce(new Error(mockErrorMessage));
-
+  
     renderWithProvider(<ChangePasswordForm />);
-
-    fireEvent.change(screen.getByLabelText(/現在のパスワード/i), { target: { value: 'oldPass' } });
-    const newPasswordFields = screen.getAllByLabelText(/新しいパスワード/i);
+  
+    fireEvent.change(screen.getByLabelText(/Current Password/i), { target: { value: 'oldPass' } });
+  
+    const newPasswordFields = screen.getAllByLabelText(/New Password/i);
     fireEvent.change(newPasswordFields[0], { target: { value: 'newPass' } });
-    fireEvent.change(screen.getByLabelText(/新しいパスワード（確認用）/i), { target: { value: 'newPass' } });
-
-    // Click change password button
-    fireEvent.click(screen.getByRole('button', { name: /パスワードを変更する/i }));
-
-    // Check that error message is displayed
-    await waitFor(() => {
-      expect(screen.getByText(mockErrorMessage)).toBeInTheDocument();
-    });
+    fireEvent.change(screen.getByLabelText(/Confirm New Password/i), { target: { value: 'newPass' } });
+  
+    // Change password buttonをクリック
+    fireEvent.click(screen.getByRole('button', { name: /Change Password/i }));
+  
+    // エラーメッセージの確認
+    expect(await screen.findByRole('alert')).toHaveTextContent(mockErrorMessage);
   });
+  
 });

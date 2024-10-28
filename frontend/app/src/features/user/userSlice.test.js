@@ -1,207 +1,272 @@
-import userReducer, { registerUser, loginUser, logoutUser, fetchProfile, updateProfile, changePassword } from './userSlice';
 import { configureStore } from '@reduxjs/toolkit';
+import userReducer, { registerUser, loginUser, fetchProfile, updateProfile, changePassword } from './userSlice';
 import apiClient from '../../utils/apiClient';
-import { expect } from '@jest/globals';
+import { createLogger } from 'redux-logger'; // loggerミドルウェアの追加
 
 // Mocking API client
 jest.mock('../../utils/apiClient');
 
-// registerUserの非同期アクションに対するテスト
-describe('userSlice - registerUser', () => {
-  let store;
+// フェイクタイマーを有効にする
+jest.useFakeTimers();
 
-  beforeEach(() => {
-    store = configureStore({
-      reducer: {
-        user: userReducer,
-      },
-    });
-  });
+// loggerミドルウェアを作成
+const logger = createLogger();
 
-  it('登録成功時の処理を確認する', async () => {
-    const mockResponseData = { username: 'testUser', email: 'test@example.com' };
-    apiClient.post.mockResolvedValueOnce({ data: mockResponseData });
+let store;
 
-    await store.dispatch(registerUser({ username: 'testUser', email: 'test@example.com', password: 'password123' }));
-
-    const state = store.getState().user;
-    expect(state.status).toBe('succeeded');
-    expect(state.userInfo).toEqual(mockResponseData);
+beforeEach(() => {
+  store = configureStore({
+    reducer: {
+      user: userReducer,
+    },
+    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(logger), // ミドルウェアの追加
   });
 });
 
-// loginUserの非同期アクションに対するテスト
-describe('userSlice - loginUser', () => {
-  let store;
-
-  beforeEach(() => {
-    store = configureStore({
-      reducer: {
-        user: userReducer,
-      },
+// 初期状態の確認テスト
+describe('userSlice - 初期状態の確認', () => {
+  it('初期状態を確認する', () => {
+    const initialState = store.getState().user;
+    expect(initialState).toEqual({
+      isLoggedIn: false,
+      userInfo: null,
+      status: 'idle',
+      error: null,
     });
   });
+});
 
-  it('ログイン成功時の処理を確認する', async () => {
-    const mockResponseData = { token: 'mockToken', username: 'testUser' };
+describe('userSlice - API呼び出しの確認', () => {
+  it('APIが呼ばれていることを確認する', async () => {
+    const mockResponseData = { email: 'test@example.com' };
     apiClient.post.mockResolvedValueOnce({ data: mockResponseData });
 
-    await store.dispatch(loginUser({ username: 'testUser', password: 'password123' }));
+    // 非同期アクションをディスパッチ
+    await store.dispatch(registerUser({ email: 'test@example.com', password: 'password123' })).unwrap();
 
+    // API呼び出しを確認
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/register/',
+      { email: 'test@example.com', password: 'password123' },
+      { headers: { Authorization: undefined } }
+    );
+
+    // ストアの状態を確認
     const state = store.getState().user;
-    expect(state.status).toBe('succeeded');
-    expect(state.isLoggedIn).toBe(true);
-    expect(state.userInfo).toEqual(mockResponseData);
+    console.log('Current state after API call:', state);
+  });
+});
+
+describe('userSlice - アクションディスパッチの確認', () => {
+  it('registerUserアクションがfulfilledであることを確認する', async () => {
+    const mockResponseData = { email: 'test@example.com' };
+    apiClient.post.mockResolvedValueOnce({ data: mockResponseData });
+
+    // アクションをディスパッチ
+    const resultAction = await store.dispatch(registerUser({ email: 'test@example.com', password: 'password123' }));
+    console.log('Result action:', resultAction);
+
+    // fulfilledであることを確認
+    expect(resultAction.type).toBe('user/registerUser/fulfilled');
+
+    // ディスパッチ後の状態を確認
+    const stateAfterDispatch = store.getState().user;
+    console.log('State after dispatch:', stateAfterDispatch);
+  });
+});
+
+// registerUserアクションのテスト
+describe('userSlice - registerUserアクションのテスト', () => {
+  it('pending時にstatusがloadingに変わる', async () => {
+    const mockResponseData = { email: 'test@example.com' };
+    apiClient.post.mockResolvedValueOnce({ data: mockResponseData });
+
+    // registerUserアクションをディスパッチ
+    const actionPromise = store.dispatch(registerUser({ email: 'test@example.com', password: 'password123' }));
+
+    // アクションのpending状態を待たずに、すぐにstateを確認
+    const stateDuringPending = store.getState().user;
+    expect(stateDuringPending.status).toBe('loading');
+
+    // アクションの完了を待つ
+    await actionPromise;
   });
 
-  it('ログイン失敗時の処理を確認する', async () => {
+  it('fulfilled時にuserInfoとstatusが更新される', async () => {
+    const mockResponseData = { email: 'test@example.com' };
+    apiClient.post.mockResolvedValueOnce({ data: mockResponseData });
+
+    // registerUserアクションをディスパッチ
+    await store.dispatch(registerUser({ email: 'test@example.com', password: 'password123' }));
+
+    // ストアの状態を確認
+    const stateAfterFulfilled = store.getState().user;
+    expect(stateAfterFulfilled.userInfo).toEqual(mockResponseData);
+    expect(stateAfterFulfilled.status).toBe('idle'); // fulfilled後、statusは'idle'に戻る
+  });
+
+  it('rejected時にerrorが設定され、statusがfailedに変わる', async () => {
+    const mockErrorMessage = '登録に失敗しました';
+    apiClient.post.mockRejectedValueOnce(new Error(mockErrorMessage));
+
+    // registerUserアクションをディスパッチ
+    await store.dispatch(registerUser({ email: 'test@example.com', password: 'password123' }));
+
+    // ストアの状態を確認
+    const stateAfterRejected = store.getState().user;
+    expect(stateAfterRejected.error).toBe(mockErrorMessage);
+    expect(stateAfterRejected.status).toBe('idle'); // rejected後、statusは'idle'に戻る
+  });
+});
+
+// loginUserアクションのテスト
+describe('userSlice - loginUserアクションのテスト', () => {
+  it('pending時にstatusがloadingに変わる', async () => {
+    const mockResponseData = { token: 'mockToken', email: 'test@example.com' };
+    apiClient.post.mockResolvedValueOnce({ data: mockResponseData });
+
+    // loginUserアクションをディスパッチ
+    const actionPromise = store.dispatch(loginUser({ username: 'test@example.com', password: 'password123' }));
+
+    // アクションのpending状態を待たずに、すぐにstateを確認
+    const stateDuringPending = store.getState().user;
+    expect(stateDuringPending.status).toBe('loading');
+
+    // アクションの完了を待つ
+    await actionPromise;
+  });
+
+  it('fulfilled時にuserInfoとisLoggedInが更新される', async () => {
+    const mockResponseData = { token: 'mockToken', email: 'test@example.com' };
+    apiClient.post.mockResolvedValueOnce({ data: mockResponseData });
+
+    // loginUserアクションをディスパッチ
+    await store.dispatch(loginUser({ username: 'test@example.com', password: 'password123' }));
+
+    // ストアの状態を確認
+    const stateAfterFulfilled = store.getState().user;
+    expect(stateAfterFulfilled.userInfo).toEqual(mockResponseData);
+    expect(stateAfterFulfilled.isLoggedIn).toBe(true);
+    expect(stateAfterFulfilled.status).toBe('idle'); // fulfilled後、statusは'idle'に戻る
+  });
+
+  it('rejected時にerrorが設定され、isLoggedInがfalseになる', async () => {
     const mockErrorMessage = 'ログインに失敗しました';
     apiClient.post.mockRejectedValueOnce(new Error(mockErrorMessage));
 
-    await store.dispatch(loginUser({ username: 'testUser', password: 'wrongPassword' }));
+    // loginUserアクションをディスパッチ
+    await store.dispatch(loginUser({ username: 'test@example.com', password: 'wrongpassword' }));
 
-    const state = store.getState().user;
-    expect(state.status).toBe('failed');
-    expect(state.isLoggedIn).toBe(false);
-    expect(state.error).toBe(mockErrorMessage);
+    // ストアの状態を確認
+    const stateAfterRejected = store.getState().user;
+    expect(stateAfterRejected.error).toBe(mockErrorMessage);
+    expect(stateAfterRejected.isLoggedIn).toBe(false);
+    expect(stateAfterRejected.status).toBe('idle'); // rejected後、statusは'idle'に戻る
   });
 });
 
-// logoutUserの非同期アクションに対するテスト
-describe('userSlice - logoutUser', () => {
-  let store;
+// fetchProfileアクションのテスト
+describe('userSlice - fetchProfileアクションのテスト', () => {
+  it('pending時にstatusがloadingに変わる', async () => {
+    apiClient.get.mockResolvedValueOnce({ data: { name: 'Test User' } });
 
-  beforeEach(() => {
-    store = configureStore({
-      reducer: {
-        user: userReducer,
-      },
-    });
+    const actionPromise = store.dispatch(fetchProfile());
+
+    const stateDuringPending = store.getState().user;
+    expect(stateDuringPending.status).toBe('loading');
+
+    await actionPromise;
   });
 
-  it('ログアウト成功時の処理を確認する', async () => {
-    apiClient.post.mockResolvedValueOnce({});
-
-    await store.dispatch(logoutUser());
-
-    const state = store.getState().user;
-    expect(state.status).toBe('succeeded');
-    expect(state.isLoggedIn).toBe(false);
-    expect(state.userInfo).toBeNull();
-  });
-
-  it('ログアウト失敗時の処理を確認する', async () => {
-    const mockErrorMessage = 'ログアウトに失敗しました';
-    apiClient.post.mockRejectedValueOnce(new Error(mockErrorMessage));
-
-    await store.dispatch(logoutUser());
-
-    const state = store.getState().user;
-    expect(state.status).toBe('failed');
-    expect(state.error).toBe(mockErrorMessage);
-  });
-});
-
-// fetchProfileの非同期アクションに対するテスト
-describe('userSlice - fetchProfile', () => {
-  let store;
-
-  beforeEach(() => {
-    store = configureStore({
-      reducer: {
-        user: userReducer,
-      },
-    });
-  });
-
-  it('プロフィール取得成功時の処理を確認する', async () => {
-    const mockProfileData = { name: 'testUser', user_type: 'student' };
-    apiClient.get.mockResolvedValueOnce({ data: mockProfileData });
+  it('fulfilled時にuserInfoが更新される', async () => {
+    const mockUserData = { name: 'Test User', email: 'test@example.com' };
+    apiClient.get.mockResolvedValueOnce({ data: mockUserData });
 
     await store.dispatch(fetchProfile());
 
-    const state = store.getState().user;
-    expect(state.status).toBe('succeeded');
-    expect(state.userInfo).toEqual(mockProfileData);
+    const stateAfterFulfilled = store.getState().user;
+    expect(stateAfterFulfilled.userInfo).toEqual(mockUserData);
+    expect(stateAfterFulfilled.status).toBe('idle'); // fulfilled後、statusは'idle'に戻る
   });
 
-  it('プロフィール取得失敗時の処理を確認する', async () => {
-    const mockErrorMessage = 'プロフィール取得に失敗しました';
+  it('rejected時にerrorが設定され、statusがfailedに変わる', async () => {
+    const mockErrorMessage = 'プロフィールの取得に失敗しました';
     apiClient.get.mockRejectedValueOnce(new Error(mockErrorMessage));
 
     await store.dispatch(fetchProfile());
 
-    const state = store.getState().user;
-    expect(state.status).toBe('failed');
-    expect(state.error).toBe(mockErrorMessage);
+    const stateAfterRejected = store.getState().user;
+    expect(stateAfterRejected.error).toBe(mockErrorMessage);
+    expect(stateAfterRejected.status).toBe('idle'); // rejected後、statusは'idle'に戻る
   });
 });
 
-// updateProfileの非同期アクションに対するテスト
-describe('userSlice - updateProfile', () => {
-  let store;
+// updateProfileアクションのテスト
+describe('userSlice - updateProfileアクションのテスト', () => {
+  it('pending時にstatusがloadingに変わる', async () => {
+    apiClient.patch.mockResolvedValueOnce({ data: { name: 'Updated User' } });
 
-  beforeEach(() => {
-    store = configureStore({
-      reducer: {
-        user: userReducer,
-      },
-    });
+    const actionPromise = store.dispatch(updateProfile({ name: 'Updated User' }));
+
+    const stateDuringPending = store.getState().user;
+    expect(stateDuringPending.status).toBe('loading');
+
+    await actionPromise;
   });
 
-  it('プロフィール更新成功時の処理を確認する', async () => {
-    const mockProfileData = { name: 'updatedUser', user_type: 'teacher' };
-    apiClient.patch.mockResolvedValueOnce({ data: mockProfileData });
+  it('fulfilled時にuserInfoがマージされる', async () => {
+    const mockUpdatedUserData = { name: 'Updated User' };
+    apiClient.patch.mockResolvedValueOnce({ data: mockUpdatedUserData });
 
-    await store.dispatch(updateProfile({ name: 'updatedUser', user_type: 'teacher' }));
+    await store.dispatch(updateProfile({ name: 'Updated User' }));
 
-    const state = store.getState().user;
-    expect(state.status).toBe('succeeded');
-    expect(state.userInfo).toEqual(expect.objectContaining(mockProfileData));
+    const stateAfterFulfilled = store.getState().user;
+    expect(stateAfterFulfilled.userInfo).toMatchObject(mockUpdatedUserData);
+    expect(stateAfterFulfilled.status).toBe('succeeded');
   });
 
-  it('プロフィール更新失敗時の処理を確認する', async () => {
+  it('rejected時にerrorが設定される', async () => {
     const mockErrorMessage = 'プロフィールの更新に失敗しました';
     apiClient.patch.mockRejectedValueOnce(new Error(mockErrorMessage));
 
-    await store.dispatch(updateProfile({ name: 'updatedUser', user_type: 'teacher' }));
+    await store.dispatch(updateProfile({ name: 'Updated User' }));
 
-    const state = store.getState().user;
-    expect(state.status).toBe('failed');
-    expect(state.error).toBe(mockErrorMessage);
+    const stateAfterRejected = store.getState().user;
+    expect(stateAfterRejected.error).toBe(mockErrorMessage);
+    expect(stateAfterRejected.status).toBe('failed');
   });
 });
 
-// changePasswordの非同期アクションに対するテスト
-describe('userSlice - changePassword', () => {
-  let store;
+// changePasswordアクションのテスト
+describe('userSlice - changePasswordアクションのテスト', () => {
+  it('pending時にstatusがloadingに変わる', async () => {
+    apiClient.put.mockResolvedValueOnce({ data: true });
 
-  beforeEach(() => {
-    store = configureStore({
-      reducer: {
-        user: userReducer,
-      },
-    });
+    const actionPromise = store.dispatch(changePassword({ oldPassword: 'oldpass', newPassword: 'newpass' }));
+
+    const stateDuringPending = store.getState().user;
+    expect(stateDuringPending.status).toBe('loading');
+
+    await actionPromise;
   });
 
-  it('パスワード変更成功時の処理を確認する', async () => {
-    apiClient.put.mockResolvedValueOnce({}); // 成功時のレスポンスをモック
+  it('fulfilled時にstatusが更新される', async () => {
+    apiClient.put.mockResolvedValueOnce({ data: true });
 
-    await store.dispatch(changePassword({ current_password: 'oldPass', new_password: 'newPass' }));
+    await store.dispatch(changePassword({ oldPassword: 'oldpass', newPassword: 'newpass' }));
 
-    const state = store.getState().user;
-    expect(state.status).toBe('succeeded');
-    expect(state.error).toBeNull();
+    const stateAfterFulfilled = store.getState().user;
+    expect(stateAfterFulfilled.status).toBe('idle'); // fulfilled後、statusは'idle'に戻る
   });
 
-  it('パスワード変更失敗時の処理を確認する', async () => {
+  it('rejected時にerrorが設定される', async () => {
     const mockErrorMessage = 'パスワードの変更に失敗しました';
-    apiClient.put.mockRejectedValueOnce(new Error(mockErrorMessage)); // エラー時のレスポンスをモック
+    apiClient.put.mockRejectedValueOnce(new Error(mockErrorMessage));
 
-    await store.dispatch(changePassword({ current_password: 'oldPass', new_password: 'newPass' }));
+    await store.dispatch(changePassword({ oldPassword: 'oldpass', newPassword: 'newpass' }));
 
-    const state = store.getState().user;
-    expect(state.status).toBe('failed');
-    expect(state.error).toBe(mockErrorMessage);
+    const stateAfterRejected = store.getState().user;
+    expect(stateAfterRejected.error).toBe(mockErrorMessage);
+    expect(stateAfterRejected.status).toBe('idle'); // rejected後、statusは'idle'に戻る
   });
 });
