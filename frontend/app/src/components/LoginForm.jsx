@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { loginUser } from '../features/user/userSlice';
+import { loginUser, fetchProfile } from '../features/user/userSlice';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from './styles/RegisterLoginForm.module.css';
 
@@ -37,10 +37,9 @@ const LoginForm = () => {
             try {
                 // Dispatch loginUser action
                 await dispatch(loginUser({ username: formData.email, password: formData.password })).unwrap();
+                await dispatch(fetchProfile()).unwrap();
                 navigate('/');
-                // Set success message
-                // setSuccessMessage('Login successful!');
-                // setErrors({});
+    
             } catch (error) {
                 // Log full error response
                 console.log('Full error object:', error);
@@ -48,20 +47,26 @@ const LoginForm = () => {
                 // Set error messages
                 try {
                     const errorData = JSON.parse(error);
-                    
+    
                     if (typeof errorData === 'object') {
-                        // Set error messages for each field
-                        const dynamicErrors = {};
-                        Object.entries(errorData).forEach(([key, value]) => {
-                            dynamicErrors[key] = Array.isArray(value) ? value.join(', ') : value;
-                        });
-                        setErrors(dynamicErrors);
+                        // Handle 'non_field_errors' separately
+                        if (errorData.non_field_errors) {
+                            // Set a more user-friendly error message
+                            setErrors({ form: 'The email or password you entered is incorrect.' });
+                        } else {
+                            // Set error messages for each field
+                            const dynamicErrors = {};
+                            Object.entries(errorData).forEach(([key, value]) => {
+                                dynamicErrors[key] = Array.isArray(value) ? value.join(', ') : value;
+                            });
+                            setErrors(dynamicErrors);
+                        }
                     } else {
-                        setErrors({ form: errorData });
+                        setErrors({ form: 'Login failed. Please try again.' });
                     }
                 } catch (e) {
                     console.error('Failed to parse error message:', e);
-                    setErrors({ form: 'Login failed' });
+                    setErrors({ form: 'Login failed. Please try again.' });
                 }
             }
         }
@@ -69,39 +74,47 @@ const LoginForm = () => {
 
     return (
         <div className={styles.pageContainer}>
-        <div className={styles.formContainer}>
-            <h1 className={styles.title}>WELCOME</h1>
-        <form role="form" onSubmit={handleSubmit}>
-            <div className={styles.formBlock}>
-                <label htmlFor="email">E-mail</label>
-                <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                />
-                {errors.email && <span className={styles.errorMessage}>{errors.email}</span>}
+            <div className={styles.formContainer}>
+                <h1 className={styles.title}>WELCOME</h1>
+    
+                {/* Display form error below the logo */}
+                {errors.form && (
+                    <div role="alert" className={styles.errorMessage} style={{ marginBottom: '1rem' }}>
+                        {errors.form}
+                    </div>
+                )}
+    
+                <form role="form" onSubmit={handleSubmit}>
+                    <div className={styles.formBlock}>
+                        <label htmlFor="email">E-mail</label>
+                        <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                        />
+                        {errors.email && <span className={styles.errorMessage}>{errors.email}</span>}
+                    </div>
+                    <div>
+                        <label htmlFor="password">Password</label>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            value={formData.password}
+                            onChange={handleInputChange}
+                        />
+                        {errors.password && <span className={styles.errorMessage}>{errors.password}</span>}
+                    </div>
+                    <button type="submit" className={styles.submitBtn}>Login</button>
+                    {successMessage && <div role="alert">{successMessage}</div>}
+                </form>
+                <p>Not registered? <Link to="/register">Register here</Link></p>
             </div>
-            <div>
-                <label htmlFor="password">Password</label>
-                <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                />
-                {errors.password && <span className={styles.errorMessage}>{errors.password}</span>}
-            </div>
-            <button type="submit" className={styles.submitBtn}>Login</button>
-            {successMessage && <div role="alert">{successMessage}</div>}
-            {errors.form && <div role="alert">{errors.form}</div>}
-        </form>
-        <p>Not registered? <Link to="/register">Register here</Link></p>
-        </div>
         </div>
     );
+    
 };
 
 export default LoginForm;

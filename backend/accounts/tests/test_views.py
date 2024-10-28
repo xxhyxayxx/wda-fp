@@ -3,6 +3,8 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
 from accounts.models import CustomUser
+from django.core.files.uploadedfile import SimpleUploadedFile
+import os
 
 class UserRegistrationAPIViewTest(TestCase):
     def setUp(self):
@@ -58,7 +60,7 @@ class UserProfileUpdateAPIViewTest(TestCase):
         data = {
             'profile_image': ''
         }
-        response = self.client.put(url, data, format='json', partial=True)
+        response = self.client.patch(url, data, format='json', partial=True)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
         self.assertEqual(self.user.profile_image.name, 'profile_images/default_profile.png')
@@ -93,3 +95,114 @@ class UserProfileUpdateAPIViewTest(TestCase):
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('user_type', response.data)
+
+    def test_user_profile_update_duplicate_email(self):
+        """既に存在するメールアドレスを使用して更新しようとした場合のバリデーションテスト"""
+        CustomUser.objects.create_user(email='existinguser@example.com', password='password123')
+        self.client.force_authenticate(user=self.user)
+        url = reverse('user-profile-update')
+        data = {
+            'email': 'existinguser@example.com'
+        }
+        response = self.client.put(url, data, format='json', partial=True)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('email', response.data)
+
+    def test_user_profile_partial_update_successful(self):
+        """部分更新 (PATCH) が成功するかをテスト"""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('user-profile-update')
+        data = {
+            'name': 'Partially Updated Name'
+        }
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.name, 'Partially Updated Name')
+
+    def test_user_profile_update_name_successful(self):
+        """認証済みユーザーによる名前の更新が成功するかをテスト"""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('user-profile-update')
+        data = {
+            'name': 'Updated Name'
+        }
+        response = self.client.put(url, data, format='json', partial=True)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.name, 'Updated Name')
+
+    def test_user_profile_update_invalid_name(self):
+        """無効な名前を渡した場合のバリデーションエラーチェック"""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('user-profile-update')
+        data = {
+            'name': ''  # 空の名前は無効
+        }
+        response = self.client.put(url, data, format='json', partial=True)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('name', response.data)
+
+    def test_user_profile_update_profile_image_successful(self):
+        """プロフィール画像の更新が成功するかをテスト"""
+        self.client.force_authenticate(user=self.user)
+        url = reverse('user-profile-update')
+        
+        image_path = os.path.join(os.path.dirname(__file__), 'test_image.png')
+        
+        with open(image_path, 'rb') as image_file:
+            image = SimpleUploadedFile(
+                name='new_image.png',
+                content=image_file.read(),
+                content_type='image/png'
+            )
+
+            data = {'profile_image': image}
+            response = self.client.patch(url, data, format='multipart')
+
+            if response.status_code != status.HTTP_200_OK:
+                print("Response data:", response.data)
+
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.user.refresh_from_db()
+
+            # startswithを使ってファイル名を確認
+            self.assertTrue(self.user.profile_image.name.startswith('profile_images/new_image'))
+
+class ChangePasswordAPIViewTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = CustomUser.objects.create_user(email='testuser@example.com', password='testpassword')
+        self.client.force_authenticate(user=self.user)
+        self.url = reverse('change-password')
+
+    def test_change_password_successful(self):
+        """パスワード変更が正常に行われるかをテスト"""
+        data = {
+            'current_password': 'testpassword',
+            'new_password': 'newtestpassword',
+        }
+        response = self.client.put(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('newtestpassword'))
+
+    def test_change_password_with_incorrect_current_password(self):
+        """現在のパスワードが間違っている場合のエラーテスト"""
+        data = {
+            'current_password': 'wrongpassword',
+            'new_password': 'newtestpassword',
+        }
+        response = self.client.put(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('current_password', response.data)
+
+    def test_change_password_with_same_password(self):
+        """新しいパスワードが現在のパスワードと同じ場合のエラーテスト"""
+        data = {
+            'current_password': 'testpassword',
+            'new_password': 'testpassword',
+        }
+        response = self.client.put(self.url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('non_field_errors', response.data)

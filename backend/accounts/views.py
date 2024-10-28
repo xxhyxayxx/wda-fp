@@ -1,6 +1,6 @@
 from rest_framework import generics, permissions
 from .models import CustomUser
-from .serializers import UserRegistrationSerializer
+from .serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -13,19 +13,22 @@ class UserRegistrationAPIView(generics.CreateAPIView):
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
 
-class UserProfileUpdateAPIView(generics.UpdateAPIView):
+class UserProfileUpdateAPIView(generics.RetrieveUpdateAPIView):
     queryset = CustomUser.objects.all()
-    serializer_class = UserRegistrationSerializer
+    serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         return self.request.user
 
     def update(self, request, *args, **kwargs):
-        # プロフィール画像が空の場合、デフォルト画像に設定
+        # リクエストデータをコピーし、画像が空の場合の処理を変更
         data = request.data.copy()
-        if data.get('profile_image') == '':
-            data['profile_image'] = 'profile_images/default_profile.png'
+
+        # 画像が送信されなかった場合には、profile_image をそのままにする
+        if 'profile_image' not in data or data.get('profile_image') == '':
+            data.pop('profile_image', None)  # profile_imageを削除して変更しない
+
         serializer = self.get_serializer(self.get_object(), data=data, partial=True)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
@@ -39,3 +42,16 @@ class LogoutAPIView(APIView):
     def post(self, request):
         request.auth.delete()  # トークンを削除
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+class ChangePasswordAPIView(generics.UpdateAPIView):
+    serializer_class = ChangePasswordSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response({'detail': 'Password updated successfully'}, status=status.HTTP_200_OK)

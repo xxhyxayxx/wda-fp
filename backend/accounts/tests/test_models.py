@@ -63,4 +63,15 @@ class CustomUserModelTest(TestCase):
         user_id = user.id
         user.delete()
         self.assertFalse(CustomUser.objects.filter(id=user_id).exists())
+        
+    def test_default_name_value(self):
+        """ユーザー作成時のデフォルトの名前が 'New User' であることをテスト"""
+        user = CustomUser.objects.create_user(**self.user_data)
+        self.assertEqual(user.name, 'New User')
 
+    def test_update_name(self):
+        """ユーザーの名前を更新するテスト"""
+        user = CustomUser.objects.create_user(**self.user_data)
+        user.name = 'Updated User Name'
+        user.save()
+        self.assertEqual(user.name, 'Updated User Name')

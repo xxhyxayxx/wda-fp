@@ -1,0 +1,132 @@
+.pageContainer {
+    max-width: 600px;
+    background-color: #fff;
+    display: flex;
+    justify-content: center;
+    margin: 80px auto;
+    border-radius: 12px;
+    padding: 40px 0;
+  }
+  
+  .title {
+    font-family: "Quicksand", sans-serif;
+    font-size: 2.4rem;
+    color: var(--purple);
+    margin: 0 0 24px;
+    letter-spacing: 0.1rem;
+    text-align: center;
+  }
+  
+  .submitBtn {
+    display: block;
+    margin: 20px auto;
+    width: 200px;
+    border: none;
+    font-size: 1.1rem;
+    padding: 12px 0;
+    border-radius: 4px;
+    background-color: var(--purple);
+    color: #fff;
+    letter-spacing: 0.04rem;
+  }
+  
+  button:hover {
+    opacity: 0.8;
+  }
+  
+  label {
+    display: inline-block;
+    font-size: 1.125rem;
+    width: 120px;
+    font-weight: 700;
+    color: var(--indigo);
+  }
+  
+  input {
+    padding: 8px 8px;
+    border: 2px solid var(--lavender);
+    border-radius: 4px;
+    width: 200px;
+    font-size: 1rem;
+  }
+  
+  .formBlock {
+    margin: 0 auto 12px;
+    text-align: center;
+  }
+  
+  .imagePreview {
+    width: 150px; /* プレビュー画像のサイズ */
+    height: 150px; /* 縦横を同じにして円形を維持 */
+    margin: 0 auto 10px; /* 中央寄せと下にスペース */
+  }
+  
+  .imagePreview img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%; /* 円形にする */
+    object-fit: cover; 
+  }
+  
+  .imageUploadContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .imageUploadContainer label {
+    margin-right: 10px; /* ラベルと入力フィールドの間に余白をつける */
+  }
+  
+  .imageUploadContainer input {
+    padding: 5px;
+  }
+
+  .imageUploadContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .customFileUpload {
+    display: inline-block;
+    padding: 10px 20px;
+    cursor: pointer;
+    background-color: var(--purple);
+    color: #fff;
+    border-radius: 4px;
+    text-align: center;
+    font-weight: normal;
+    font-size: 1rem;
+    margin: 0 0 10px;
+  }
+  
+  .hiddenFileInput {
+    display: none; /* 完全に非表示にする */
+  }
+
+  .fileName {
+    margin: 0 0 10px;
+    font-size: 0.9rem;
+    color: var(--indigo);
+    text-align: center;
+  }
+
+  .errorMessage{
+    display: block;
+    margin: 4px 0;
+    color: var(--red);
+}
+
+.successMessage{
+    color: var(--green);
+    text-align: center;
+}
+
+.changePasswordLink{
+    text-decoration: underline;
+    color: var(--indigo);
+}
+  
+  
+  
