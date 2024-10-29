@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import Home from './components/Home';
+import TeacherHome from './components/TeacherHome'; // 追加
 import { store } from './store';
 import PrivateRoute from './routes/PrivateRoute';
 import './styles/global.css';
@@ -18,11 +19,21 @@ createRoot(document.getElementById('root')).render(
         <Routes>
           <Route path="/login" element={<LoginForm />} />
           <Route path="/register" element={<RegisterForm />} />
+          {/* 生徒用のホーム */}
           <Route
             path="/"
             element={
               <PrivateRoute>
                 <Home />
+              </PrivateRoute>
+            }
+          />
+          {/* 教師用のホーム */}
+          <Route
+            path="/teacher-home"
+            element={
+              <PrivateRoute>
+                <TeacherHome />
               </PrivateRoute>
             }
           />
