@@ -19,7 +19,7 @@ export const registerUser = createAsyncThunk(
   'user/registerUser',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/register/', userData, {
+      const response = await apiClient.post('/accounts/register/', userData, {
         headers: {
           // Authorizationヘッダーを明示的に取り除く
           Authorization: undefined,
@@ -40,7 +40,7 @@ export const loginUser = createAsyncThunk(
       localStorage.removeItem('authToken');
       delete apiClient.defaults.headers.common['Authorization'];
 
-      const response = await apiClient.post('/login/', {
+      const response = await apiClient.post('/accounts/login/', {
         username: userData.username,
         password: userData.password,
       });
@@ -69,7 +69,7 @@ export const logoutUser = createAsyncThunk(
   'user/logoutUser',
   async (_, { rejectWithValue }) => {
     try {
-      await apiClient.post('/logout/');
+      await apiClient.post('/accounts/logout/');
       localStorage.removeItem('authToken');
       delete apiClient.defaults.headers.common['Authorization'];
       return true;
@@ -83,7 +83,7 @@ export const fetchProfile = createAsyncThunk(
   'user/fetchProfile',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await apiClient.get('/profile/update/');
+      const response = await apiClient.get('/accounts/profile/update/');
       return response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'プロフィールの取得に失敗しました');
@@ -95,7 +95,7 @@ export const updateProfile = createAsyncThunk(
   'user/updateProfile',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await apiClient.patch('/profile/update/', userData);
+      const response = await apiClient.patch('/accounts/profile/update/', userData);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'プロフィールの更新に失敗しました');
@@ -107,7 +107,7 @@ export const changePassword = createAsyncThunk(
   'user/changePassword',
   async (passwordData, { rejectWithValue }) => {
     try {
-      const response = await apiClient.put('/change-password/', passwordData);
+      const response = await apiClient.put('/accounts/change-password/', passwordData);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'パスワードの変更に失敗しました');

@@ -27,36 +27,34 @@ const ChangePasswordForm = () => {
     setErrors({});
 
     try {
-      // パスワード変更アクションをディスパッチ
-      await dispatch(changePassword({ current_password: currentPassword, new_password: newPassword })).unwrap();
-      
-      setSuccessMessage('Password changed successfully');
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+        // パスワード変更アクションをディスパッチ
+        await dispatch(changePassword({ current_password: currentPassword, new_password: newPassword })).unwrap();
+        setSuccessMessage('Password changed successfully');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
     } catch (error) {
-      // Log full error response
-      console.log('Full error object:', error);
-
-      // Set error messages
-      try {
-        const errorData = JSON.parse(error);
-
-        if (typeof errorData === 'object') {
-          // Set error messages for each field
-          const dynamicErrors = {};
-          Object.entries(errorData).forEach(([key, value]) => {
-            dynamicErrors[key] = Array.isArray(value) ? value.join(', ') : value;
-          });
-          setErrors(dynamicErrors);
-        } else {
-          setErrors({ form: errorData });
+        console.log('Full error object:', error);
+    
+        // エラーメッセージをパース
+        try {
+            const errorData = JSON.parse(error);
+    
+            if (typeof errorData === 'object') {
+                // 各フィールドのエラーメッセージを設定
+                const dynamicErrors = {};
+                Object.entries(errorData).forEach(([key, value]) => {
+                    dynamicErrors[key] = Array.isArray(value) ? value.join(', ') : value;
+                });
+                setErrors(dynamicErrors);
+            } else {
+                setErrors({ form: errorData });
+            }
+        } catch (e) {
+            console.error('Failed to parse error message:', e);
+            setErrors({ form: 'Password change failed' });
         }
-      } catch (e) {
-        console.error('Failed to parse error message:', e);
-        setErrors({ form: 'Password change failed' });
-      }
-    }
+    }    
   };
 
   return (

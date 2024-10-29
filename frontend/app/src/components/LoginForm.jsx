@@ -39,22 +39,19 @@ const LoginForm = () => {
                 await dispatch(loginUser({ username: formData.email, password: formData.password })).unwrap();
                 await dispatch(fetchProfile()).unwrap();
                 navigate('/');
-    
             } catch (error) {
-                // Log full error response
                 console.log('Full error object:', error);
-    
-                // Set error messages
+            
+                // エラーメッセージをパース
                 try {
                     const errorData = JSON.parse(error);
-    
+            
                     if (typeof errorData === 'object') {
-                        // Handle 'non_field_errors' separately
+                        // 'non_field_errors' を個別に処理
                         if (errorData.non_field_errors) {
-                            // Set a more user-friendly error message
                             setErrors({ form: 'The email or password you entered is incorrect.' });
                         } else {
-                            // Set error messages for each field
+                            // 各フィールドのエラーメッセージを設定
                             const dynamicErrors = {};
                             Object.entries(errorData).forEach(([key, value]) => {
                                 dynamicErrors[key] = Array.isArray(value) ? value.join(', ') : value;
@@ -62,13 +59,14 @@ const LoginForm = () => {
                             setErrors(dynamicErrors);
                         }
                     } else {
-                        setErrors({ form: 'Login failed. Please try again.' });
+                        setErrors({ form: errorData });
                     }
                 } catch (e) {
                     console.error('Failed to parse error message:', e);
                     setErrors({ form: 'Login failed. Please try again.' });
                 }
             }
+            
         }
     };
 

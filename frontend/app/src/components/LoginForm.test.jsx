@@ -60,7 +60,7 @@ describe('LoginForm Component', () => {
 
     // Verify navigation to home page (check if redirect was called)
     await waitFor(() => {
-      expect(apiClient.post).toHaveBeenCalledWith('/login/', {
+      expect(apiClient.post).toHaveBeenCalledWith('/accounts/login/', {
         username: 'test@example.com',
         password: 'password123',
       });
@@ -69,9 +69,9 @@ describe('LoginForm Component', () => {
 
   test('displays error messages on failed login', async () => {
     // Mock API response to return an error
-    apiClient.post.mockRejectedValueOnce({
-      response: { data: { detail: 'Invalid credentials' } },
-    });
+    apiClient.post.mockRejectedValueOnce(
+        new Error(JSON.stringify({ non_field_errors: ['Invalid credentials'] }))
+    );
 
     renderWithProvider(<LoginForm />);
 
@@ -88,9 +88,9 @@ describe('LoginForm Component', () => {
 
     // Check that error message is displayed
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('Login failed');
+        expect(screen.getByRole('alert')).toHaveTextContent('The email or password you entered is incorrect.');
     });
-  });
+});
 
   test('shows error messages when email or password is empty', async () => {
     renderWithProvider(<LoginForm />);
