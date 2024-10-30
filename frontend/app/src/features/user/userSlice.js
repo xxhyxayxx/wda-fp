@@ -198,7 +198,8 @@ const userSlice = createSlice({
       // updateProfile.fulfilledの修正
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.userInfo = { ...state.userInfo, ...action.payload };
+        const { user_type, ...updatedData } = action.payload;
+        state.userInfo = { ...state.userInfo, ...updatedData };
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.status = 'failed';
