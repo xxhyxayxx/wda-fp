@@ -116,7 +116,7 @@ describe('userSlice - registerUserアクションのテスト', () => {
 // loginUserアクションのテスト
 describe('userSlice - loginUserアクションのテスト', () => {
   it('pending時にstatusがloadingに変わる', async () => {
-    const mockResponseData = { token: 'mockToken', email: 'test@example.com' };
+    const mockResponseData = { token: 'mockToken' }; // 修正: トークンだけ
     apiClient.post.mockResolvedValueOnce({ data: mockResponseData });
 
     const actionPromise = store.dispatch(loginUser({ username: 'test@example.com', password: 'password123' }));
@@ -127,14 +127,14 @@ describe('userSlice - loginUserアクションのテスト', () => {
     await actionPromise;
   });
 
-  it('fulfilled時にuserInfoとisLoggedInが更新される', async () => {
-    const mockResponseData = { token: 'mockToken', email: 'test@example.com' };
+  it('fulfilled時にトークンとisLoggedInが更新される', async () => {
+    const mockResponseData = { token: 'mockToken' }; // 修正: トークンだけ
     apiClient.post.mockResolvedValueOnce({ data: mockResponseData });
-
+  
     await store.dispatch(loginUser({ username: 'test@example.com', password: 'password123' }));
-
+  
     const stateAfterFulfilled = store.getState().user;
-    expect(stateAfterFulfilled.userInfo).toEqual(mockResponseData);
+    expect(stateAfterFulfilled.userInfo).toEqual({ token: 'mockToken' }); // トークンのみ
     expect(stateAfterFulfilled.isLoggedIn).toBe(true);
     expect(stateAfterFulfilled.status).toBe('idle'); // fulfilled後、statusは'idle'に戻る
   });
@@ -151,6 +151,7 @@ describe('userSlice - loginUserアクションのテスト', () => {
     expect(stateAfterRejected.status).toBe('idle'); // rejected後、statusは'idle'に戻る
   });
 });
+
 
 // fetchProfileアクションのテスト
 describe('userSlice - fetchProfileアクションのテスト', () => {

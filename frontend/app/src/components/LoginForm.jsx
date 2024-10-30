@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, fetchProfile } from '../features/user/userSlice';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from './styles/RegisterLoginForm.module.css';
@@ -7,6 +7,8 @@ import styles from './styles/RegisterLoginForm.module.css';
 const LoginForm = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
+    const userType = useSelector((state) => state.user.userInfo?.userType); // 修正：トップレベルで呼び出し
+
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
@@ -22,36 +24,42 @@ const LoginForm = () => {
     const handleSubmit = async (event) => {
         event.preventDefault();
         const newErrors = {};
-    
-        // Form validation
+
+        // フォームのバリデーション
         if (!formData.email) {
             newErrors.email = 'Email is required';
         }
         if (!formData.password) {
             newErrors.password = 'Password is required';
         }
-    
+
         setErrors(newErrors);
-    
+
         if (Object.keys(newErrors).length === 0) {
             try {
-                // Dispatch loginUser action
+                // ログインでトークンを取得
                 await dispatch(loginUser({ username: formData.email, password: formData.password })).unwrap();
-                await dispatch(fetchProfile()).unwrap();
-                navigate('/');
+
+                const profileData = await dispatch(fetchProfile()).unwrap();
+                console.log('Profile Data after fetchProfile:', profileData);
+
+                // ユーザータイプに基づくリダイレクト
+                if (userType === 'teacher') {
+                    navigate('/teacher-home');
+                } else {
+                    navigate('/');
+                }
+
             } catch (error) {
                 console.log('Full error object:', error);
-            
-                // エラーメッセージをパース
+
+                // エラーメッセージの処理
                 try {
                     const errorData = JSON.parse(error);
-            
                     if (typeof errorData === 'object') {
-                        // 'non_field_errors' を個別に処理
                         if (errorData.non_field_errors) {
                             setErrors({ form: 'The email or password you entered is incorrect.' });
                         } else {
-                            // 各フィールドのエラーメッセージを設定
                             const dynamicErrors = {};
                             Object.entries(errorData).forEach(([key, value]) => {
                                 dynamicErrors[key] = Array.isArray(value) ? value.join(', ') : value;
@@ -66,7 +74,6 @@ const LoginForm = () => {
                     setErrors({ form: 'Login failed. Please try again.' });
                 }
             }
-            
         }
     };
 
@@ -74,14 +81,14 @@ const LoginForm = () => {
         <div className={styles.pageContainer}>
             <div className={styles.formContainer}>
                 <h1 className={styles.title}>WELCOME</h1>
-    
-                {/* Display form error below the logo */}
+
+                {/* エラーメッセージを表示 */}
                 {errors.form && (
                     <div role="alert" className={styles.errorMessage} style={{ marginBottom: '1rem' }}>
                         {errors.form}
                     </div>
                 )}
-    
+
                 <form role="form" onSubmit={handleSubmit}>
                     <div className={styles.formBlock}>
                         <label htmlFor="email">E-mail</label>
@@ -112,7 +119,6 @@ const LoginForm = () => {
             </div>
         </div>
     );
-    
 };
 
 export default LoginForm;

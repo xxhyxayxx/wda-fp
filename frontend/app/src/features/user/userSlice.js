@@ -36,34 +36,35 @@ export const loginUser = createAsyncThunk(
   'user/loginUser',
   async (userData, { rejectWithValue }) => {
     try {
-      // 古いトークンを削除してからログインを試みる
+      // 古いトークンを削除
       localStorage.removeItem('authToken');
       delete apiClient.defaults.headers.common['Authorization'];
 
+      // ログインリクエスト
       const response = await apiClient.post('/accounts/login/', {
         username: userData.username,
         password: userData.password,
       });
 
-      const token = response.data.token;
-      console.log("Received Token:", response.data);
+      const { token } = response.data;
+      console.log("Received Token:", token);
 
       if (!token) {
         throw new Error("トークンが存在しません");
       }
 
-      // トークンをローカルストレージに保存
+      // トークンをローカルストレージに保存し、Axiosに設定
       localStorage.setItem('authToken', token);
-      // ログイン後に新しいトークンをセット
       apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;
 
-      return response.data;
+      return { token };
     } catch (error) {
       console.error("Error during login:", error);
       return rejectWithValue(error.message || 'ログインに失敗しました');
     }
   }
 );
+
 
 export const logoutUser = createAsyncThunk(
   'user/logoutUser',
@@ -149,9 +150,9 @@ const userSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.isLoggedIn = true;
-        state.userInfo = action.payload;
+        state.userInfo = { token: action.payload.token }; // トークンのみ
         state.status = 'idle';
-      })
+      })         
       .addCase(loginUser.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
