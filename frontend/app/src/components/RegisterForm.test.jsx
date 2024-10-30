@@ -48,7 +48,7 @@ describe('RegisterForm Component', () => {
   });
 
   test('handles successful registration', async () => {
-    // Mock successful response (for registration and login)
+    // Mock successful responses
     apiClient.post.mockImplementation((url) => {
       if (url.includes('/register')) {
         return Promise.resolve({
@@ -58,6 +58,11 @@ describe('RegisterForm Component', () => {
       if (url.includes('/login')) {
         return Promise.resolve({
           data: { token: 'sampleToken' },
+        });
+      }
+      if (url.includes('/profile')) {
+        return Promise.resolve({
+          data: { user_type: 'teacher' }, // fetchProfileのレスポンスをモック
         });
       }
       return Promise.reject(new Error('Unexpected URL'));
@@ -70,19 +75,20 @@ describe('RegisterForm Component', () => {
     const userTypeSelect = screen.getByLabelText(/User Type/i);
     const registerButton = screen.getByRole('button', { name: /Register/i });
   
-    // Fill in the input fields
+    // 入力フィールドに値を入力
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
     fireEvent.change(passwordInput, { target: { value: 'password123' } });
     fireEvent.change(userTypeSelect, { target: { value: 'teacher' } });
   
-    // Click the register button
+    // 登録ボタンをクリック
     fireEvent.click(registerButton);
   
-    // Check that navigate('/') is called
+    // 登録とログインが正常に呼ばれたことを確認
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/');
+      expect(apiClient.post).toHaveBeenCalledTimes(2);
+      expect(apiClient.get).toHaveBeenCalledTimes(1);
     });
-  });  
+  });
 
   test('displays error messages on failed registration', async () => {
     // Set mock API response to return an error

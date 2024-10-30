@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { registerUser, loginUser } from '../features/user/userSlice';
+import { registerUser, loginUser, fetchProfile } from '../features/user/userSlice';
 import { useNavigate, Link } from 'react-router-dom';
 import styles from './styles/RegisterLoginForm.module.css';
 
@@ -39,6 +39,7 @@ const RegisterForm = () => {
         await dispatch(registerUser(formData)).unwrap();
         // Execute login process after registration
         await dispatch(loginUser({ username: formData.email, password: formData.password })).unwrap();
+        await dispatch(fetchProfile()).unwrap();
         navigate('/');
   
         // Set success message
