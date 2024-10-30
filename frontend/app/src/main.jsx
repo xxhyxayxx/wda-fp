@@ -12,6 +12,8 @@ import TeacherRoute from './routes/TeacherRoute'; // 追加
 import './styles/global.css';
 import ProfileUpdateForm from './components/ProfileUpdateForm'; 
 import ChangePasswordForm from './components/ChangePasswordForm';
+import Courses from './components/Courses';
+import CourseForm from './components/CourseForm'; // 追加
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -51,6 +53,22 @@ createRoot(document.getElementById('root')).render(
               <PrivateRoute>
                 <ChangePasswordForm />
               </PrivateRoute>
+            }
+          />
+          <Route
+            path="/courses"
+            element={
+              <TeacherRoute>
+                <Courses />
+              </TeacherRoute>
+            }
+          />
+          <Route
+            path="/create-course"
+            element={
+              <TeacherRoute>
+                <CourseForm />
+              </TeacherRoute>
             }
           />
         </Routes>
