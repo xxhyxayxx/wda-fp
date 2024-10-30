@@ -3,16 +3,17 @@ import apiClient from '../../utils/apiClient';
 
 // 非同期アクション: コース一覧の取得
 export const fetchCourses = createAsyncThunk(
-  'course/fetchCourses',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await apiClient.get('/courses/');
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.message);
+    'course/fetchCourses',
+    async (_, { rejectWithValue }) => {
+      try {
+        const response = await apiClient.get('/courses/');  // Djangoのコース一覧APIに一致するように確認
+        return response.data;
+      } catch (error) {
+        return rejectWithValue(error.message);
+      }
     }
-  }
-);
+  );
+  
 
 // 非同期アクション: コースの作成
 export const createCourse = createAsyncThunk(

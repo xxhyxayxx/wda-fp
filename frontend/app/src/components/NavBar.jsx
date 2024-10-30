@@ -1,4 +1,3 @@
-// NavBar.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
@@ -28,6 +27,13 @@ const NavBar = () => {
             )}
           </Link>
         </li>
+        {userInfo?.user_type === 'teacher' && ( // user_type が 'teacher' の場合のみ表示
+          <li>
+            <Link to="/courses" className={styles.navLink}>
+              Courses
+            </Link>
+          </li>
+        )}
         <li>
           <LogoutButton />
         </li>

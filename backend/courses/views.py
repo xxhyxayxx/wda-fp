@@ -19,3 +19,8 @@ class CourseUpdateAPIView(generics.UpdateAPIView):
 class CourseDeleteAPIView(generics.DestroyAPIView):
     queryset = Course.objects.all()
     permission_classes = [IsTeacher]
+
+# コースリストビュー
+class CourseListAPIView(generics.ListAPIView):
+    queryset = Course.objects.all()
+    serializer_class = CourseSerializer
