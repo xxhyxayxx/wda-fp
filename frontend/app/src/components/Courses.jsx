@@ -10,8 +10,16 @@ const Courses = () => {
   const { courses, loading, error } = useSelector((state) => state.course);
 
   useEffect(() => {
-    dispatch(fetchCourses());
+    async function loadCourses() {
+      try {
+        await dispatch(fetchCourses());
+      } catch (e) {
+        console.error('Failed to fetch courses:', e);
+      }
+    }
+    loadCourses();
   }, [dispatch]);
+  
 
   const handleCreateCourse = () => {
     navigate('/create-course');
