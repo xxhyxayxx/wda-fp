@@ -29,8 +29,8 @@ const renderWithProvider = (component) => {
 describe('Courses Component', () => {
     test('fetches and displays courses', async () => {
         const mockCourses = [
-            { id: 1, name: 'Course 1', description: 'Description 1' },
-            { id: 2, name: 'Course 2', description: 'Description 2' },
+            { id: 1, title: 'Course 1', description: 'Description 1', created_at: '2024-10-29T10:00:00Z', updated_at: '2024-10-29T10:05:00Z' },
+            { id: 2, title: 'Course 2', description: 'Description 2', created_at: '2024-10-29T11:00:00Z', updated_at: '2024-10-29T11:05:00Z' },
         ];
 
         apiClient.get.mockResolvedValueOnce({ data: mockCourses });
@@ -40,8 +40,8 @@ describe('Courses Component', () => {
         });
 
         await waitFor(() => {
-            expect(screen.getByText('Course 1')).toBeInTheDocument();
-            expect(screen.getByText('Course 2')).toBeInTheDocument();
+            expect(screen.getByText('Title: Course 1')).toBeInTheDocument();
+            expect(screen.getByText('Title: Course 2')).toBeInTheDocument();
         });
     });
 

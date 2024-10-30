@@ -5,15 +5,16 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import Home from './components/Home';
-import TeacherHome from './components/TeacherHome'; 
+import TeacherHome from './components/TeacherHome';
 import { store } from './store';
 import PrivateRoute from './routes/PrivateRoute';
-import TeacherRoute from './routes/TeacherRoute'; // 追加
+import TeacherRoute from './routes/TeacherRoute';
 import './styles/global.css';
-import ProfileUpdateForm from './components/ProfileUpdateForm'; 
+import ProfileUpdateForm from './components/ProfileUpdateForm';
 import ChangePasswordForm from './components/ChangePasswordForm';
 import Courses from './components/Courses';
-import CourseForm from './components/CourseForm'; // 追加
+import CreateCoursePage from './components/CreateCoursePage'; // CreateCoursePageに変更
+import EditCoursePage from './components/EditCoursePage';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -30,7 +31,6 @@ createRoot(document.getElementById('root')).render(
               </PrivateRoute>
             }
           />
-          {/* 教師用のホーム、TeacherRouteで保護 */}
           <Route
             path="/teacher-home"
             element={
@@ -67,7 +67,15 @@ createRoot(document.getElementById('root')).render(
             path="/create-course"
             element={
               <TeacherRoute>
-                <CourseForm />
+                <CreateCoursePage /> {/* ここをCreateCoursePageに変更 */}
+              </TeacherRoute>
+            }
+          />
+          <Route
+            path="/edit-course/:courseId"
+            element={
+              <TeacherRoute>
+                <EditCoursePage />
               </TeacherRoute>
             }
           />
