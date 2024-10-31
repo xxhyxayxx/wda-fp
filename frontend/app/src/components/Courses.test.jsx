@@ -5,6 +5,7 @@ import '@testing-library/jest-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import courseReducer from '../features/course/courseSlice';
+import userReducer from '../features/user/userSlice';
 import Courses from './Courses';
 import apiClient from '../utils/apiClient';
 import { BrowserRouter } from 'react-router-dom';
@@ -15,8 +16,16 @@ jest.mock('../utils/apiClient');
 // Function to render a component with Redux store
 const renderWithProvider = (component) => {
     const store = configureStore({
-        reducer: { course: courseReducer },
+        reducer: { 
+            course: courseReducer,
+            user: userReducer, // user スライスを追加
+        },
         middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
+        preloadedState: {
+            user: {
+                userInfo: { name: 'Test User', email: 'test@example.com' }, // userInfo を設定
+            },
+        },
     });
 
     return render(
@@ -40,8 +49,8 @@ describe('Courses Component', () => {
         });
 
         await waitFor(() => {
-            expect(screen.getByText('Title: Course 1')).toBeInTheDocument();
-            expect(screen.getByText('Title: Course 2')).toBeInTheDocument();
+            expect(screen.getByText('Course 1')).toBeInTheDocument();
+            expect(screen.getByText('Course 2')).toBeInTheDocument();
         });
     });
 
