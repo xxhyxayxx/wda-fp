@@ -18,7 +18,11 @@
     align-items: center;
 }
 
-.navLinks li:first-child{
+.navLinks li{
+    margin: 0 28px 0 0;
+}
+
+.account{
     margin: 0 20px 0 0;
 }
 
@@ -34,3 +38,10 @@
     align-items: center;
   }
   
+a{
+    color: var(--indigo);
+}
+
+.navLinks a:hover{
+    text-decoration: underline;
+}

@@ -1,0 +1,98 @@
+.coursesContainer{
+    padding: 80px 0;
+    justify-content: center;
+    display: flex;
+}
+
+.createButton{
+    width: 200px;
+    background-color: var(--purple);
+    border: none;
+    color: #fff;
+    padding: 12px 24px;
+    font-size: 1.2rem;
+    letter-spacing: 0.08rem;
+    border-radius: 4px;
+}
+
+.emptyText{
+    font-size: 1.2rem;
+    text-align: center;
+}
+
+.mainBlock{
+    display: flex;
+    flex-direction: column;
+    align-items: end;
+}
+
+.courseTable{
+    margin: 20px 0 40px;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 4px;
+    max-width: 1080px;
+}
+
+.courseTable th{
+    padding: 0 10px 10px 10px;
+    border-bottom: 1px solid #efefef;
+    color: var(--purple);
+}
+
+.courseTable td{
+    text-align: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #efefef;
+}
+
+.courseTable tr:last-child td{
+    border-bottom: none;
+}
+
+.DateCell{
+    width: 200px;
+}
+
+.TitleCell{
+    width: 200px;
+}
+
+.CategoryCell{
+    width: 120px;
+}
+
+.dropdownMenu {
+    position: absolute;
+    background: white;
+    border: 1px solid #ddd;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    border-radius: 4px;
+}
+
+.dropdownMenu button {
+    background: none;
+    border: none;
+    padding: 10px;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    text-align: center;
+    font-weight: bold;
+}
+
+.editButton{
+    color: var(--purple);
+}
+
+.deleteButton{
+    color: var(--red);
+}
+
+.dropdownMenu button:hover {
+    text-decoration: underline;
+}

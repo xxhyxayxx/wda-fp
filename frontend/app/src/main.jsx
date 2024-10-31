@@ -15,6 +15,7 @@ import ChangePasswordForm from './components/ChangePasswordForm';
 import Courses from './components/Courses';
 import CreateCoursePage from './components/CreateCoursePage'; // CreateCoursePageに変更
 import EditCoursePage from './components/EditCoursePage';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
