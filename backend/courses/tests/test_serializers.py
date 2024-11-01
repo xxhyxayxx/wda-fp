@@ -1,7 +1,8 @@
 from django.test import TestCase
 from accounts.models import CustomUser
-from courses.models import Course
-from courses.serializers import CourseSerializer
+from courses.models import Course, Module, File
+from courses.serializers import CourseSerializer, ModuleSerializer, FileSerializer
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 class CourseSerializerTest(TestCase):
 
@@ -63,5 +64,110 @@ class CourseSerializerTest(TestCase):
         from rest_framework.test import APIRequestFactory
         factory = APIRequestFactory()
         request = factory.post('/courses/', self.course_data)
+        request.user = self.teacher
+        return request
+
+class ModuleSerializerTest(TestCase):
+
+    def setUp(self):
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            name='Test Teacher',
+            user_type='teacher'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            description='This is a test course.',
+            created_by=self.teacher
+        )
+        self.module_data = {
+            'course': self.course.id,
+            'title': 'Test Module',
+            'description': 'This is a test module.',
+            'order': 1,
+        }
+
+    def test_module_serializer_valid_data(self):
+        serializer = ModuleSerializer(data=self.module_data, context={'request': self._get_request()})
+        self.assertTrue(serializer.is_valid())
+        module = serializer.save()
+        self.assertEqual(module.title, 'Test Module')
+        self.assertEqual(module.description, 'This is a test module.')
+        self.assertEqual(module.order, 1)
+        self.assertEqual(module.created_by, self.teacher)
+
+    def test_module_serializer_read_only_fields(self):
+        module = Module.objects.create(
+            course=self.course,
+            title='ReadOnly Test Module',
+            description='Testing read-only fields.',
+            order=1,
+            created_by=self.teacher
+        )
+        serializer = ModuleSerializer(module)
+        data = serializer.data
+        self.assertEqual(data['course_title'], self.course.title)
+        self.assertEqual(data['created_by_name'], 'Test Teacher')
+
+    def _get_request(self):
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = factory.post('/modules/', self.module_data)
+        request.user = self.teacher
+        return request
+
+class FileSerializerTest(TestCase):
+
+    def setUp(self):
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            name='Test Teacher',
+            user_type='teacher'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            description='This is a test course.',
+            created_by=self.teacher
+        )
+        self.module = Module.objects.create(
+            course=self.course,
+            title='Test Module',
+            created_by=self.teacher,
+            order=1,
+        )
+        # テスト用のファイルオブジェクトを作成
+        self.test_file = SimpleUploadedFile("test_file.pdf", b"file_content", content_type="application/pdf")
+        self.file_data = {
+            'module': self.module.id,
+            'file': self.test_file,  # ファイルオブジェクトを指定
+            'title': 'Test File',
+        }
+
+    def test_file_serializer_valid_data(self):
+        serializer = FileSerializer(data=self.file_data, context={'request': self._get_request()})
+        self.assertTrue(serializer.is_valid(), msg=serializer.errors)  # エラーを表示するように変更
+        file = serializer.save()
+        self.assertEqual(file.title, 'Test File')
+        self.assertIn('course_files/test_file', file.file.name)
+        self.assertEqual(file.created_by, self.teacher)
+
+    def test_file_serializer_read_only_fields(self):
+        file = File.objects.create(
+            module=self.module,
+            file=self.test_file,  # ファイルオブジェクトを設定
+            title='ReadOnly Test File',
+            created_by=self.teacher
+        )
+        serializer = FileSerializer(file)
+        data = serializer.data
+        self.assertEqual(data['module_title'], self.module.title)
+        self.assertEqual(data['created_by_name'], 'Test Teacher')
+
+    def _get_request(self):
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = factory.post('/files/', self.file_data)
         request.user = self.teacher
         return request
