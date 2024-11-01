@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import CourseForm from './CourseForm';
+import NavBar from './NavBar';
 
 const EditCoursePage = () => {
   const { courseId } = useParams(); // URLからコースIDを取得
@@ -23,12 +24,14 @@ const EditCoursePage = () => {
 
   return (
     <div>
-      <h1>Edit Course</h1>
+      <NavBar />
+    <div>
       {course ? (
         <CourseForm course={course} onClose={() => navigate('/courses')} />
       ) : (
         <p>Loading...</p>
       )}
+    </div>
     </div>
   );
 };

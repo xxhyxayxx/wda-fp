@@ -77,7 +77,7 @@ const Courses = () => {
                     <div className={styles.emptyState}>
                         <p className={styles.emptyText}>No courses available</p>
                         <button onClick={handleCreateCourse} className={styles.createButton}>
-                            Create your first course
+                        Create Course
                         </button>
                     </div>
                 ) : (
