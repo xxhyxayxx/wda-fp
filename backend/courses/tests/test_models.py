@@ -89,7 +89,8 @@ class ModuleModelTest(TestCase):
             course=self.course,
             title='Test Module',
             description='This is a test module.',
-            order=1
+            order=1,
+            created_by=self.teacher  # 作成者を設定
         )
         
         # モデルフィールドの正確な設定を確認
@@ -97,19 +98,22 @@ class ModuleModelTest(TestCase):
         self.assertEqual(module.title, 'Test Module')
         self.assertEqual(module.description, 'This is a test module.')
         self.assertEqual(module.order, 1)
+        self.assertEqual(module.created_by, self.teacher)  # 作成者の確認
 
     def test_module_str_method(self):
         module = Module.objects.create(
             course=self.course,
             title='Module Title',
-            order=1
+            order=1,
+            created_by=self.teacher
         )
         self.assertEqual(str(module), f"{self.course.title} - {module.title}")
 
     def test_module_deletion(self):
         module = Module.objects.create(
             course=self.course,
-            title='Module to Delete'
+            title='Module to Delete',
+            created_by=self.teacher
         )
         module.delete()
         self.assertFalse(Module.objects.filter(title='Module to Delete').exists())
@@ -128,7 +132,8 @@ class FileModelTest(TestCase):
         )
         self.module = Module.objects.create(
             course=self.course,
-            title='Test Module'
+            title='Test Module',
+            created_by=self.teacher
         )
 
     def test_file_creation(self):
@@ -136,19 +141,22 @@ class FileModelTest(TestCase):
         file = File.objects.create(
             module=self.module,
             file='test_file.pdf',
-            title='Test File'
+            title='Test File',
+            created_by=self.teacher  # 作成者を設定
         )
         
         # モデルフィールドの正確な設定を確認
         self.assertEqual(file.module, self.module)
         self.assertEqual(file.file.name, 'test_file.pdf')
         self.assertEqual(file.title, 'Test File')
+        self.assertEqual(file.created_by, self.teacher)  # 作成者の確認
 
     def test_file_str_method(self):
         file = File.objects.create(
             module=self.module,
             file='test_file.pdf',
-            title='File Title'
+            title='File Title',
+            created_by=self.teacher
         )
         self.assertEqual(str(file), 'File Title')
 
@@ -156,7 +164,8 @@ class FileModelTest(TestCase):
         file = File.objects.create(
             module=self.module,
             file='file_to_delete.pdf',
-            title='Delete File'
+            title='Delete File',
+            created_by=self.teacher
         )
         file.delete()
         self.assertFalse(File.objects.filter(title='Delete File').exists())
