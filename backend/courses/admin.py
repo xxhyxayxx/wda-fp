@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Course
+from .models import Course, Module, File
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
@@ -11,3 +11,15 @@ class CourseAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
         return queryset.select_related('created_by')
+
+@admin.register(Module)
+class ModuleAdmin(admin.ModelAdmin):
+    list_display = ('title', 'course', 'order')
+    search_fields = ('title', 'course__title')
+    list_filter = ('course',)
+
+@admin.register(File)
+class FileAdmin(admin.ModelAdmin):
+    list_display = ('title', 'module', 'uploaded_at')
+    search_fields = ('title', 'module__title')
+    list_filter = ('module',)
