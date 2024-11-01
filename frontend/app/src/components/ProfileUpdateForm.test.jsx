@@ -37,7 +37,6 @@ describe('ProfileUpdateForm Component', () => {
     const mockUserData = {
       name: 'Test User',
       email: 'test@example.com',
-      user_type: 'student',
       profile_image: 'http://example.com/test_image.png',
     };
 
@@ -48,17 +47,17 @@ describe('ProfileUpdateForm Component', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(/Name/i)).toHaveValue(mockUserData.name);
       expect(screen.getByLabelText(/Email/i)).toHaveValue(mockUserData.email);
-      expect(screen.getByLabelText(/User Type/i)).toHaveValue(mockUserData.user_type);
     });
 
-    expect(screen.getByAltText('Profile Preview')).toHaveAttribute('src', mockUserData.profile_image);
+    // Profileの画像プレビューを検証
+    const profileImages = screen.getAllByAltText('Profile');
+    expect(profileImages[1]).toHaveAttribute('src', mockUserData.profile_image); // 2番目のimgタグがプレビュー画像
   });
 
   test('updates status to succeeded after profile update', async () => {
     const mockUpdatedUserData = {
       name: 'Updated User',
       email: 'updated@example.com',
-      user_type: 'teacher',
       profile_image: 'http://example.com/updated_image.png',
     };
 
@@ -72,7 +71,6 @@ describe('ProfileUpdateForm Component', () => {
 
     fireEvent.change(screen.getByLabelText(/Name/i), { target: { value: mockUpdatedUserData.name } });
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: mockUpdatedUserData.email } });
-    fireEvent.change(screen.getByLabelText(/User Type/i), { target: { value: mockUpdatedUserData.user_type } });
 
     fireEvent.click(screen.getByRole('button', { name: /Update/i }));
 

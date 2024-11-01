@@ -5,11 +5,17 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import RegisterForm from './components/RegisterForm';
 import LoginForm from './components/LoginForm';
 import Home from './components/Home';
+import TeacherHome from './components/TeacherHome';
 import { store } from './store';
 import PrivateRoute from './routes/PrivateRoute';
+import TeacherRoute from './routes/TeacherRoute';
 import './styles/global.css';
-import ProfileUpdateForm from './components/ProfileUpdateForm'; 
+import ProfileUpdateForm from './components/ProfileUpdateForm';
 import ChangePasswordForm from './components/ChangePasswordForm';
+import Courses from './components/Courses';
+import CreateCoursePage from './components/CreateCoursePage'; // CreateCoursePageに変更
+import EditCoursePage from './components/EditCoursePage';
+import '@fortawesome/fontawesome-free/css/all.min.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -27,6 +33,14 @@ createRoot(document.getElementById('root')).render(
             }
           />
           <Route
+            path="/teacher-home"
+            element={
+              <TeacherRoute>
+                <TeacherHome />
+              </TeacherRoute>
+            }
+          />
+          <Route
             path="/account"
             element={
               <PrivateRoute>
@@ -40,6 +54,30 @@ createRoot(document.getElementById('root')).render(
               <PrivateRoute>
                 <ChangePasswordForm />
               </PrivateRoute>
+            }
+          />
+          <Route
+            path="/courses"
+            element={
+              <TeacherRoute>
+                <Courses />
+              </TeacherRoute>
+            }
+          />
+          <Route
+            path="/create-course"
+            element={
+              <TeacherRoute>
+                <CreateCoursePage /> {/* ここをCreateCoursePageに変更 */}
+              </TeacherRoute>
+            }
+          />
+          <Route
+            path="/edit-course/:courseId"
+            element={
+              <TeacherRoute>
+                <EditCoursePage />
+              </TeacherRoute>
             }
           />
         </Routes>

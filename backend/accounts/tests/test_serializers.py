@@ -110,11 +110,10 @@ class UserProfileSerializerTest(TestCase):
         )
     
     def test_profile_serializer_valid_data(self):
-        """シリアライザが有効なデータを処理できるかをテスト"""
+        """シリアライザが有効なデータを正しく処理できるかをテスト"""
         data = {
             'email': 'updateduser@example.com',
             'name': 'Updated Name',
-            'user_type': 'teacher',
         }
         request = self.factory.get('/profile/update/')
         request.user = self.user
@@ -123,7 +122,6 @@ class UserProfileSerializerTest(TestCase):
         updated_user = serializer.save()
         self.assertEqual(updated_user.email, data['email'])
         self.assertEqual(updated_user.name, data['name'])
-        self.assertEqual(updated_user.user_type, data['user_type'])
 
     def test_profile_serializer_email_unique(self):
         """メールアドレスが一意であることを確認するテスト"""
@@ -164,6 +162,18 @@ class UserProfileSerializerTest(TestCase):
         self.assertTrue(serializer.is_valid())
         updated_user = serializer.save()
         self.assertEqual(updated_user.profile_image.name, 'profile_images/default_profile.png')
+    
+    def test_profile_serializer_user_type_read_only(self):
+        """user_typeが読み取り専用であることをテスト"""
+        data = {
+            'user_type': 'teacher',  # user_typeの変更を試みる
+        }
+        request = self.factory.get('/profile/update/')
+        request.user = self.user
+        serializer = UserProfileSerializer(instance=self.user, data=data, partial=True, context={'request': request})
+        self.assertTrue(serializer.is_valid())  # シリアライザ自体は有効
+        updated_user = serializer.save()
+        self.assertEqual(updated_user.user_type, 'student')  # user_typeは変更されていないことを確認
 
 class ChangePasswordSerializerTest(TestCase):
     def setUp(self):

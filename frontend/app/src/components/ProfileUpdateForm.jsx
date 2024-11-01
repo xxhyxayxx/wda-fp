@@ -8,7 +8,7 @@ import NavBar from './NavBar';
 const ProfileUpdateForm = () => {
   const dispatch = useDispatch();
   const { userInfo, status, error } = useSelector((state) => state.user);
-  const [formData, setFormData] = useState({ name: '', email: '', user_type: 'student' });
+  const [formData, setFormData] = useState({ name: '', email: '' });
   const [profileImage, setProfileImage] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
   const [fileName, setFileName] = useState('');
@@ -26,7 +26,6 @@ const ProfileUpdateForm = () => {
       setFormData({
         name: userInfo.name || '',
         email: userInfo.email || '',
-        user_type: userInfo.user_type || 'student',
       });
       if (userInfo.profile_image) {
         setPreviewImage(userInfo.profile_image);
@@ -56,7 +55,6 @@ const ProfileUpdateForm = () => {
       }, 1000); // 1秒待ってからリセット
     }
   }, [status, dispatch]);
-  
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -101,7 +99,6 @@ const ProfileUpdateForm = () => {
         const updatedData = new FormData();
         updatedData.append('name', formData.name);
         updatedData.append('email', formData.email);
-        updatedData.append('user_type', formData.user_type);
         if (profileImage) {
           updatedData.append('profile_image', profileImage);
         }
@@ -114,13 +111,11 @@ const ProfileUpdateForm = () => {
         setErrors({});
       } catch (error) {
         console.error('Full error object:', error);
-        // エラーハンドリングのまま
       } finally {
         setIsSubmitting(false);
       }
     }
   };
-  
   
   // statusがloadingの時だけ表示するように変更
   if (status === 'loading' && !isSubmitting) {
@@ -137,7 +132,7 @@ const ProfileUpdateForm = () => {
             <div className={styles.formBlock}>
               {previewImage && (
                 <div className={styles.imagePreview}>
-                  <img src={previewImage} alt="Profile Preview" />
+                  <img src={previewImage} alt="Profile" />
                 </div>
               )}
               <div className={styles.imageUploadContainer}>
@@ -184,18 +179,6 @@ const ProfileUpdateForm = () => {
               {errors.email && <span className={styles.errorMessage}>{errors.email}</span>}
             </div>
 
-            <div className={styles.formBlock}>
-              <label htmlFor="user_type">User Type</label>
-              <select
-                id="user_type"
-                name="user_type"
-                value={formData.user_type || 'student'}
-                onChange={handleInputChange}
-              >
-                <option value="student">Student</option>
-                <option value="teacher">Teacher</option>
-              </select>
-            </div>
             <div className={styles.formBlock}>
               <Link to="/change-password" className={styles.changePasswordLink}>
                 Change Password

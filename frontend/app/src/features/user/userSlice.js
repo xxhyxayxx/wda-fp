@@ -19,7 +19,7 @@ export const registerUser = createAsyncThunk(
   'user/registerUser',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/register/', userData, {
+      const response = await apiClient.post('/accounts/register/', userData, {
         headers: {
           // Authorizationヘッダーを明示的に取り除く
           Authorization: undefined,
@@ -36,28 +36,28 @@ export const loginUser = createAsyncThunk(
   'user/loginUser',
   async (userData, { rejectWithValue }) => {
     try {
-      // 古いトークンを削除してからログインを試みる
+      // 古いトークンを削除
       localStorage.removeItem('authToken');
       delete apiClient.defaults.headers.common['Authorization'];
 
-      const response = await apiClient.post('/login/', {
+      // ログインリクエスト
+      const response = await apiClient.post('/accounts/login/', {
         username: userData.username,
         password: userData.password,
       });
 
-      const token = response.data.token;
-      console.log("Received Token:", response.data);
+      const { token } = response.data;
+      console.log("Received Token:", token);
 
       if (!token) {
         throw new Error("トークンが存在しません");
       }
 
-      // トークンをローカルストレージに保存
+      // トークンをローカルストレージに保存し、Axiosに設定
       localStorage.setItem('authToken', token);
-      // ログイン後に新しいトークンをセット
       apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;
 
-      return response.data;
+      return { token };
     } catch (error) {
       console.error("Error during login:", error);
       return rejectWithValue(error.message || 'ログインに失敗しました');
@@ -65,11 +65,12 @@ export const loginUser = createAsyncThunk(
   }
 );
 
+
 export const logoutUser = createAsyncThunk(
   'user/logoutUser',
   async (_, { rejectWithValue }) => {
     try {
-      await apiClient.post('/logout/');
+      await apiClient.post('/accounts/logout/');
       localStorage.removeItem('authToken');
       delete apiClient.defaults.headers.common['Authorization'];
       return true;
@@ -83,7 +84,7 @@ export const fetchProfile = createAsyncThunk(
   'user/fetchProfile',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await apiClient.get('/profile/update/');
+      const response = await apiClient.get('/accounts/profile/update/');
       return response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'プロフィールの取得に失敗しました');
@@ -95,7 +96,7 @@ export const updateProfile = createAsyncThunk(
   'user/updateProfile',
   async (userData, { rejectWithValue }) => {
     try {
-      const response = await apiClient.patch('/profile/update/', userData);
+      const response = await apiClient.patch('/accounts/profile/update/', userData);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'プロフィールの更新に失敗しました');
@@ -107,7 +108,7 @@ export const changePassword = createAsyncThunk(
   'user/changePassword',
   async (passwordData, { rejectWithValue }) => {
     try {
-      const response = await apiClient.put('/change-password/', passwordData);
+      const response = await apiClient.put('/accounts/change-password/', passwordData);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.message || 'パスワードの変更に失敗しました');
@@ -149,9 +150,9 @@ const userSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.status = 'succeeded';
         state.isLoggedIn = true;
-        state.userInfo = action.payload;
+        state.userInfo = { token: action.payload.token }; // トークンのみ
         state.status = 'idle';
-      })
+      })         
       .addCase(loginUser.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
@@ -197,7 +198,8 @@ const userSlice = createSlice({
       // updateProfile.fulfilledの修正
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.userInfo = { ...state.userInfo, ...action.payload };
+        const { user_type, ...updatedData } = action.payload;
+        state.userInfo = { ...state.userInfo, ...updatedData };
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.status = 'failed';

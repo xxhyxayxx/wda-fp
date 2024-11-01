@@ -59,12 +59,12 @@ describe('ChangePasswordForm Component', () => {
 
     // Wait for the API call
     await waitFor(() => {
-      expect(apiClient.put).toHaveBeenCalledWith('/change-password/', {
-        current_password: 'oldPass',
-        new_password: 'newPass',
-      });
+        expect(apiClient.put).toHaveBeenCalledWith('/accounts/change-password/', {
+            current_password: 'oldPass',
+            new_password: 'newPass',
+        });
     });
-  });
+});
 
   
   test('displays error messages when passwords do not match', async () => {
@@ -85,21 +85,23 @@ describe('ChangePasswordForm Component', () => {
   
   test('handles failed password change', async () => {
     const mockErrorMessage = 'Password change failed';
-    apiClient.put.mockRejectedValueOnce(new Error(mockErrorMessage));
-  
+    apiClient.put.mockRejectedValueOnce(new Error(JSON.stringify({ form: mockErrorMessage })));
+
     renderWithProvider(<ChangePasswordForm />);
-  
+
     fireEvent.change(screen.getByLabelText(/Current Password/i), { target: { value: 'oldPass' } });
-  
+    
     const newPasswordFields = screen.getAllByLabelText(/New Password/i);
     fireEvent.change(newPasswordFields[0], { target: { value: 'newPass' } });
     fireEvent.change(screen.getByLabelText(/Confirm New Password/i), { target: { value: 'newPass' } });
-  
-    // Change password buttonをクリック
+
+    // Click change password button
     fireEvent.click(screen.getByRole('button', { name: /Change Password/i }));
-  
-    // エラーメッセージの確認
-    expect(await screen.findByRole('alert')).toHaveTextContent(mockErrorMessage);
-  });
+
+    // Check for error message display
+    await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(mockErrorMessage);
+    });
+});
   
 });
