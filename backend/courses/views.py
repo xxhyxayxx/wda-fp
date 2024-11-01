@@ -1,26 +1,68 @@
 from rest_framework import generics, permissions
-from .models import Course
-from .serializers import CourseSerializer
+from .models import Course, Module, File
+from .serializers import CourseSerializer, ModuleSerializer, FileSerializer
 from .permissions import IsTeacher
 
-# コース作成ビュー
+# コース作成、更新、削除、一覧ビュー（既存コード）
+
 class CourseCreateAPIView(generics.CreateAPIView):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
     permission_classes = [IsTeacher]
 
-# コース編集ビュー
 class CourseUpdateAPIView(generics.UpdateAPIView):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
     permission_classes = [IsTeacher]
 
-# コース削除ビュー
 class CourseDeleteAPIView(generics.DestroyAPIView):
     queryset = Course.objects.all()
     permission_classes = [IsTeacher]
 
-# コースリストビュー
 class CourseListAPIView(generics.ListAPIView):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
+
+# モジュール作成ビュー
+class ModuleCreateAPIView(generics.CreateAPIView):
+    queryset = Module.objects.all()
+    serializer_class = ModuleSerializer
+    permission_classes = [IsTeacher]
+
+# モジュール編集ビュー
+class ModuleUpdateAPIView(generics.UpdateAPIView):
+    queryset = Module.objects.all()
+    serializer_class = ModuleSerializer
+    permission_classes = [IsTeacher]
+
+# モジュール削除ビュー
+class ModuleDeleteAPIView(generics.DestroyAPIView):
+    queryset = Module.objects.all()
+    permission_classes = [IsTeacher]
+
+# モジュールリストビュー
+class ModuleListAPIView(generics.ListAPIView):
+    queryset = Module.objects.all()
+    serializer_class = ModuleSerializer
+
+# ファイル作成ビュー
+class FileCreateAPIView(generics.CreateAPIView):
+    queryset = File.objects.all()
+    serializer_class = FileSerializer
+    permission_classes = [IsTeacher]
+
+# ファイル編集ビュー
+class FileUpdateAPIView(generics.UpdateAPIView):
+    queryset = File.objects.all()
+    serializer_class = FileSerializer
+    permission_classes = [IsTeacher]
+
+# ファイル削除ビュー
+class FileDeleteAPIView(generics.DestroyAPIView):
+    queryset = File.objects.all()
+    permission_classes = [IsTeacher]
+
+# ファイルリストビュー
+class FileListAPIView(generics.ListAPIView):
+    queryset = File.objects.all()
+    serializer_class = FileSerializer
