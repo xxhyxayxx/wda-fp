@@ -67,8 +67,8 @@ const CourseForm = ({ course, onClose }) => {
 
   return (
     <div className={styles.formContainer}>
-      <h2>{course ? 'Edit Course' : 'Create Course'}</h2>
-      <form onSubmit={handleSubmit}>
+      <h2 className={styles.courseFormTitle}>{course ? 'Edit Course' : 'Create Course'}</h2>
+      <form onSubmit={handleSubmit} className={styles.formBox}>
         <div className={styles.formBlock}>
           <label htmlFor="title">Title</label>
           <input
@@ -101,7 +101,7 @@ const CourseForm = ({ course, onClose }) => {
           />
           {errors.category && <span className={styles.errorMessage}>{errors.category}</span>}
         </div>
-        <div className={styles.formBlock}>
+        <div className={styles.formBlockCheck}>
           <label htmlFor="is_published">Publish</label>
           <input
             id="is_published"

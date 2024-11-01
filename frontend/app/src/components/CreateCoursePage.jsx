@@ -1,5 +1,6 @@
 import React from 'react';
 import CourseForm from './CourseForm';
+import NavBar from './NavBar';
 import { useNavigate } from 'react-router-dom';
 
 const CreateCoursePage = () => {
@@ -7,8 +8,10 @@ const CreateCoursePage = () => {
 
   return (
     <div>
-      <h1>Create a New Course</h1>
+    <NavBar />
+    <div>
       <CourseForm onClose={() => navigate('/courses')} />
+    </div>
     </div>
   );
 };
