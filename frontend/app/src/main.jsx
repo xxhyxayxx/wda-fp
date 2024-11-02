@@ -15,6 +15,7 @@ import ChangePasswordForm from './components/ChangePasswordForm';
 import Courses from './components/Courses';
 import CreateCoursePage from './components/CreateCoursePage'; // CreateCoursePageに変更
 import EditCoursePage from './components/EditCoursePage';
+import CourseDetailPage from './components/CourseDetailPage';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 createRoot(document.getElementById('root')).render(
@@ -77,6 +78,14 @@ createRoot(document.getElementById('root')).render(
             element={
               <TeacherRoute>
                 <EditCoursePage />
+              </TeacherRoute>
+            }
+          />
+          <Route
+            path="/courses/:courseId"
+            element={
+              <TeacherRoute>
+                <CourseDetailPage />
               </TeacherRoute>
             }
           />
