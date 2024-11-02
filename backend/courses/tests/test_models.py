@@ -117,6 +117,24 @@ class ModuleModelTest(TestCase):
         )
         module.delete()
         self.assertFalse(Module.objects.filter(title='Module to Delete').exists())
+    
+    def test_module_auto_order(self):
+        # 最初のモジュールを作成（明示的に order を設定しない）
+        module1 = Module.objects.create(
+            course=self.course,
+            title='Module Without Order 1',
+            created_by=self.teacher
+        )
+        # 追加のモジュールを作成し、order が自動的に割り当てられることを確認
+        module2 = Module.objects.create(
+            course=self.course,
+            title='Module Without Order 2',
+            created_by=self.teacher
+        )
+
+        # order が正しく設定されているか確認
+        self.assertEqual(module1.order, 1)
+        self.assertEqual(module2.order, 2)
 
 class FileModelTest(TestCase):
 

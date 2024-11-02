@@ -14,8 +14,6 @@ class CourseSerializerTest(TestCase):
             name='Test Teacher',
             user_type='teacher'
         )
-
-        # テスト用のコースデータ
         self.course_data = {
             'title': 'Test Course',
             'description': 'This is a test course.',
@@ -24,14 +22,9 @@ class CourseSerializerTest(TestCase):
         }
 
     def test_course_serializer_valid_data(self):
-        # シリアライザーでのバリデーションが成功することを確認
         serializer = CourseSerializer(data=self.course_data, context={'request': self._get_request()})
         self.assertTrue(serializer.is_valid())
-        
-        # シリアライザーの保存
-        course = serializer.save()
-        
-        # コースが正しく作成されていることを確認
+        course = serializer.save(created_by=self.teacher)  # 明示的に `created_by` を設定
         self.assertEqual(course.title, 'Test Course')
         self.assertEqual(course.description, 'This is a test course.')
         self.assertEqual(course.category, 'Test Category')
@@ -39,7 +32,6 @@ class CourseSerializerTest(TestCase):
         self.assertEqual(course.created_by, self.teacher)
 
     def test_course_serializer_read_only_fields(self):
-        # コースを作成
         course = Course.objects.create(
             title='ReadOnly Test Course',
             description='Testing read-only fields.',
@@ -47,20 +39,13 @@ class CourseSerializerTest(TestCase):
             is_published=False,
             created_by=self.teacher
         )
-
-        # シリアライザーでシリアライズ
         serializer = CourseSerializer(course)
         data = serializer.data
-        
-        # 'created_by_name' が正しく表示されているかを確認
         self.assertEqual(data['created_by_name'], 'Test Teacher')
-        
-        # 'created_at'と'updated_at'が正しく存在するかを確認
         self.assertIn('created_at', data)
         self.assertIn('updated_at', data)
 
     def _get_request(self):
-        # テスト用の疑似リクエストを作成
         from rest_framework.test import APIRequestFactory
         factory = APIRequestFactory()
         request = factory.post('/courses/', self.course_data)
@@ -85,16 +70,14 @@ class ModuleSerializerTest(TestCase):
             'course': self.course.id,
             'title': 'Test Module',
             'description': 'This is a test module.',
-            'order': 1,
         }
 
     def test_module_serializer_valid_data(self):
         serializer = ModuleSerializer(data=self.module_data, context={'request': self._get_request()})
         self.assertTrue(serializer.is_valid())
-        module = serializer.save()
+        module = serializer.save(created_by=self.teacher)  # 明示的に `created_by` を設定
         self.assertEqual(module.title, 'Test Module')
         self.assertEqual(module.description, 'This is a test module.')
-        self.assertEqual(module.order, 1)
         self.assertEqual(module.created_by, self.teacher)
 
     def test_module_serializer_read_only_fields(self):
@@ -102,13 +85,13 @@ class ModuleSerializerTest(TestCase):
             course=self.course,
             title='ReadOnly Test Module',
             description='Testing read-only fields.',
-            order=1,
             created_by=self.teacher
         )
         serializer = ModuleSerializer(module)
         data = serializer.data
         self.assertEqual(data['course_title'], self.course.title)
         self.assertEqual(data['created_by_name'], 'Test Teacher')
+        self.assertIn('order', data)  # `order` が読み取り専用としてシリアライズされているか確認
 
     def _get_request(self):
         from rest_framework.test import APIRequestFactory
@@ -134,21 +117,19 @@ class FileSerializerTest(TestCase):
         self.module = Module.objects.create(
             course=self.course,
             title='Test Module',
-            created_by=self.teacher,
-            order=1,
+            created_by=self.teacher
         )
-        # テスト用のファイルオブジェクトを作成
         self.test_file = SimpleUploadedFile("test_file.pdf", b"file_content", content_type="application/pdf")
         self.file_data = {
             'module': self.module.id,
-            'file': self.test_file,  # ファイルオブジェクトを指定
+            'file': self.test_file,
             'title': 'Test File',
         }
 
     def test_file_serializer_valid_data(self):
         serializer = FileSerializer(data=self.file_data, context={'request': self._get_request()})
-        self.assertTrue(serializer.is_valid(), msg=serializer.errors)  # エラーを表示するように変更
-        file = serializer.save()
+        self.assertTrue(serializer.is_valid(), msg=serializer.errors)
+        file = serializer.save(created_by=self.teacher)  # 明示的に `created_by` を設定
         self.assertEqual(file.title, 'Test File')
         self.assertIn('course_files/test_file', file.file.name)
         self.assertEqual(file.created_by, self.teacher)
@@ -156,7 +137,7 @@ class FileSerializerTest(TestCase):
     def test_file_serializer_read_only_fields(self):
         file = File.objects.create(
             module=self.module,
-            file=self.test_file,  # ファイルオブジェクトを設定
+            file=self.test_file,
             title='ReadOnly Test File',
             created_by=self.teacher
         )

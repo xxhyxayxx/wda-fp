@@ -92,8 +92,9 @@ class CourseViewTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 class ModuleViewTest(APITestCase):
-
+    
     def setUp(self):
+        # テスト用のユーザー（教師と学生）を作成
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -106,6 +107,8 @@ class ModuleViewTest(APITestCase):
             name='Student User',
             user_type='student'
         )
+        
+        # テスト用のコースを作成
         self.course = Course.objects.create(
             title='Test Course',
             description='This is a test course.',
@@ -113,6 +116,8 @@ class ModuleViewTest(APITestCase):
             is_published=True,
             created_by=self.teacher
         )
+        
+        # モジュール作成用データ
         self.module_data = {
             'course': self.course.pk,
             'title': 'Test Module',
@@ -123,6 +128,7 @@ class ModuleViewTest(APITestCase):
         self.create_url = reverse('module-create')
         self.update_url = lambda pk: reverse('module-update', args=[pk])
         self.delete_url = lambda pk: reverse('module-delete', args=[pk])
+        self.order_update_url = reverse('module-order-update')  # ModuleOrderUpdateAPIViewへのURLを定義
 
     def test_teacher_can_create_module(self):
         self.client.force_authenticate(user=self.teacher)
@@ -199,6 +205,36 @@ class ModuleViewTest(APITestCase):
         self.client.force_authenticate(user=self.student)
         response = self.client.delete(self.delete_url(module.pk))
 
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_teacher_can_update_module_order(self):
+        # モジュールを複数作成して初期順序を確認
+        module1 = Module.objects.create(course=self.course, title="Module 1", order=1, created_by=self.teacher)
+        module2 = Module.objects.create(course=self.course, title="Module 2", order=2, created_by=self.teacher)
+        module3 = Module.objects.create(course=self.course, title="Module 3", order=3, created_by=self.teacher)
+
+        # 更新リクエストのデータ
+        new_order = [module3.id, module1.id, module2.id]  # 新しい順序
+
+        # 認証とPATCHリクエスト
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.patch(self.order_update_url, {"modules_order": new_order}, format='json')
+
+        # ステータスコードと順序の確認
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        module1.refresh_from_db()
+        module2.refresh_from_db()
+        module3.refresh_from_db()
+        self.assertEqual(module1.order, 2)
+        self.assertEqual(module2.order, 3)
+        self.assertEqual(module3.order, 1)
+
+    def test_student_cannot_update_module_order(self):
+        # 学生で認証
+        self.client.force_authenticate(user=self.student)
+        response = self.client.patch(self.order_update_url, {"modules_order": [1, 2]}, format='json')
+
+        # 権限エラーの確認
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 class FileViewTest(APITestCase):
