@@ -70,6 +70,7 @@ describe('moduleSlice', () => {
     await store.dispatch(updateModule({ id: 1, moduleData: updatedModule }));
     const state = store.getState().module;
 
+    // モジュールが更新されたか確認
     expect(state.modules).toContainEqual(updatedModule);
     expect(state.error).toBeNull();
   });
@@ -82,6 +83,7 @@ describe('moduleSlice', () => {
     await store.dispatch(deleteModule(1));
     const state = store.getState().module;
 
+    // モジュールが削除されたか確認
     expect(state.modules).not.toContainEqual(existingModule);
     expect(state.error).toBeNull();
   });
