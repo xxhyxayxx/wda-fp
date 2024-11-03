@@ -89,7 +89,6 @@ class ModuleModelTest(TestCase):
             course=self.course,
             title='Test Module',
             description='This is a test module.',
-            order=1,
             created_by=self.teacher  # 作成者を設定
         )
         
@@ -97,14 +96,12 @@ class ModuleModelTest(TestCase):
         self.assertEqual(module.course, self.course)
         self.assertEqual(module.title, 'Test Module')
         self.assertEqual(module.description, 'This is a test module.')
-        self.assertEqual(module.order, 1)
         self.assertEqual(module.created_by, self.teacher)  # 作成者の確認
 
     def test_module_str_method(self):
         module = Module.objects.create(
             course=self.course,
             title='Module Title',
-            order=1,
             created_by=self.teacher
         )
         self.assertEqual(str(module), f"{self.course.title} - {module.title}")
@@ -117,24 +114,6 @@ class ModuleModelTest(TestCase):
         )
         module.delete()
         self.assertFalse(Module.objects.filter(title='Module to Delete').exists())
-    
-    def test_module_auto_order(self):
-        # 最初のモジュールを作成（明示的に order を設定しない）
-        module1 = Module.objects.create(
-            course=self.course,
-            title='Module Without Order 1',
-            created_by=self.teacher
-        )
-        # 追加のモジュールを作成し、order が自動的に割り当てられることを確認
-        module2 = Module.objects.create(
-            course=self.course,
-            title='Module Without Order 2',
-            created_by=self.teacher
-        )
-
-        # order が正しく設定されているか確認
-        self.assertEqual(module1.order, 1)
-        self.assertEqual(module2.order, 2)
 
 class FileModelTest(TestCase):
 

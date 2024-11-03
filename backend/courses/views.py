@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db import transaction
 
-# コース作成、更新、削除、一覧ビュー（既存コード）
+# コース作成、更新、削除、一覧ビュー
 
 class CourseCreateAPIView(generics.CreateAPIView):
     queryset = Course.objects.all()
@@ -47,35 +47,6 @@ class ModuleDeleteAPIView(generics.DestroyAPIView):
 class ModuleListAPIView(generics.ListAPIView):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
-
-class ModuleOrderUpdateAPIView(APIView):
-    permission_classes = [IsTeacher]
-
-    def patch(self, request, *args, **kwargs):
-        modules_order = request.data.get("modules_order")
-
-        # modules_orderがリストかどうかチェック
-        if not isinstance(modules_order, list):
-            return Response(
-                {"error": "Invalid data format. Expected a list of module IDs."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # リクエストされたIDが存在するかチェック
-        module_ids = [module.id for module in Module.objects.all()]
-        invalid_ids = [module_id for module_id in modules_order if module_id not in module_ids]
-        if invalid_ids:
-            return Response(
-                {"error": f"Invalid module IDs: {invalid_ids}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # トランザクション内で順序を更新
-        with transaction.atomic():
-            for order, module_id in enumerate(modules_order, start=1):
-                Module.objects.filter(id=module_id).update(order=order)
-
-        return Response({"message": "Module order updated successfully"}, status=status.HTTP_200_OK)
 
 # ファイル作成ビュー
 class FileCreateAPIView(generics.CreateAPIView):

@@ -14,7 +14,7 @@ class CourseAdmin(admin.ModelAdmin):
 
 @admin.register(Module)
 class ModuleAdmin(admin.ModelAdmin):
-    list_display = ('title', 'course', 'order')
+    list_display = ('title', 'course')  # 'order' を削除
     search_fields = ('title', 'course__title')
     list_filter = ('course',)
 

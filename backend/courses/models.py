@@ -21,18 +21,10 @@ class Module(models.Model):
     course = models.ForeignKey(Course, related_name='modules', on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    order = models.IntegerField(help_text="Module order in the course")
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_modules')
 
-    def save(self, *args, **kwargs):
-        # `order` が未設定の場合は、既存のモジュールの最大値 + 1 を自動設定
-        if self.order is None:
-            max_order = Module.objects.filter(course=self.course).aggregate(models.Max('order'))['order__max'] or 0
-            self.order = max_order + 1
-        super().save(*args, **kwargs)
-    
     def __str__(self):
-        return f"{self.course.title} - {self.title}"  # ここを追加
+        return f"{self.course.title} - {self.title}"
 
 def validate_file_type(value):
     ext = os.path.splitext(value.name)[1].lower()

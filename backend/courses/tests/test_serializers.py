@@ -24,7 +24,7 @@ class CourseSerializerTest(TestCase):
     def test_course_serializer_valid_data(self):
         serializer = CourseSerializer(data=self.course_data, context={'request': self._get_request()})
         self.assertTrue(serializer.is_valid())
-        course = serializer.save(created_by=self.teacher)  # 明示的に `created_by` を設定
+        course = serializer.save(created_by=self.teacher)
         self.assertEqual(course.title, 'Test Course')
         self.assertEqual(course.description, 'This is a test course.')
         self.assertEqual(course.category, 'Test Category')
@@ -75,7 +75,7 @@ class ModuleSerializerTest(TestCase):
     def test_module_serializer_valid_data(self):
         serializer = ModuleSerializer(data=self.module_data, context={'request': self._get_request()})
         self.assertTrue(serializer.is_valid())
-        module = serializer.save(created_by=self.teacher)  # 明示的に `created_by` を設定
+        module = serializer.save(created_by=self.teacher)
         self.assertEqual(module.title, 'Test Module')
         self.assertEqual(module.description, 'This is a test module.')
         self.assertEqual(module.created_by, self.teacher)
@@ -91,7 +91,6 @@ class ModuleSerializerTest(TestCase):
         data = serializer.data
         self.assertEqual(data['course_title'], self.course.title)
         self.assertEqual(data['created_by_name'], 'Test Teacher')
-        self.assertIn('order', data)  # `order` が読み取り専用としてシリアライズされているか確認
 
     def _get_request(self):
         from rest_framework.test import APIRequestFactory
@@ -129,7 +128,7 @@ class FileSerializerTest(TestCase):
     def test_file_serializer_valid_data(self):
         serializer = FileSerializer(data=self.file_data, context={'request': self._get_request()})
         self.assertTrue(serializer.is_valid(), msg=serializer.errors)
-        file = serializer.save(created_by=self.teacher)  # 明示的に `created_by` を設定
+        file = serializer.save(created_by=self.teacher)
         self.assertEqual(file.title, 'Test File')
         self.assertIn('course_files/test_file', file.file.name)
         self.assertEqual(file.created_by, self.teacher)

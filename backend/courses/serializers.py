@@ -22,8 +22,8 @@ class ModuleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Module
-        fields = ['id', 'course', 'course_title', 'title', 'description', 'order', 'files', 'created_by_name']
-        read_only_fields = ['id', 'course_title', 'files', 'created_by_name', 'order']  # `order`を読み取り専用に追加
+        fields = ['id', 'course', 'course_title', 'title', 'description', 'files', 'created_by_name']
+        read_only_fields = ['id', 'course_title', 'files', 'created_by_name']
 
     def create(self, validated_data):
         validated_data['created_by'] = self.context['request'].user
