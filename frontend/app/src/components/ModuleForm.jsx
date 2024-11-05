@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { createModule, updateModule } from '../features/course/moduleSlice';
 import { uploadFile } from '../features/course/fileSlice';
+import { useNavigate } from 'react-router-dom'; // 追加
 import styles from './styles/ModuleForm.module.css';
 
-const ModuleForm = ({ module, onClose }) => {
+const ModuleForm = ({ module, courseId }) => {  // onClose を削除
   const dispatch = useDispatch();
+  const navigate = useNavigate(); // navigateを追加
   const [formData, setFormData] = useState({
     title: module?.title || '',
     description: module?.description || '',
-    order: module?.order || 1,
   });
   const [files, setFiles] = useState([]);
   const [errors, setErrors] = useState({});
@@ -18,10 +19,10 @@ const ModuleForm = ({ module, onClose }) => {
   const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.doc', '.docx', '.ppt', '.pptx'];
 
   const handleInputChange = (e) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [name]: type === 'number' ? parseInt(value, 10) : value,
+      [name]: value,
     });
   };
 
@@ -41,36 +42,36 @@ const ModuleForm = ({ module, onClose }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const newErrors = {};
-
+  
     if (!formData.title) {
       newErrors.title = 'Title is required';
     }
-
+  
     setErrors(newErrors);
-
+  
     if (Object.keys(newErrors).length === 0 && !errors.files) {
       try {
+        const formDataToSend = new FormData();
+        formDataToSend.append('title', formData.title);
+        formDataToSend.append('description', formData.description);
+        formDataToSend.append('course', courseId); // courseIdを追加
+  
+        // ファイルをFormDataに追加
+        files.forEach((file) => {
+          formDataToSend.append('file', file);
+        });
+  
         let moduleResponse;
         if (module) {
-          moduleResponse = await dispatch(updateModule({ id: module.id, moduleData: formData })).unwrap();
+          moduleResponse = await dispatch(updateModule({ id: module.id, moduleData: formDataToSend })).unwrap();
           setSuccessMessage('Module updated successfully');
         } else {
-          moduleResponse = await dispatch(createModule(formData)).unwrap();
+          moduleResponse = await dispatch(createModule(formDataToSend)).unwrap();
           setSuccessMessage('Module created successfully');
         }
-
-        if (files.length > 0) {
-          for (const file of files) {
-            const fileData = new FormData();
-            fileData.append('file', file);
-            fileData.append('title', file.name);
-            fileData.append('module', moduleResponse.id);
-            await dispatch(uploadFile(fileData)).unwrap();
-          }
-        }
-
+  
         setErrors({});
-        onClose();
+        navigate(`/courses/${courseId}`); // 送信後にCourseDetailPageにリダイレクト
       } catch (error) {
         console.log('Full error object:', error);
         try {
@@ -90,7 +91,7 @@ const ModuleForm = ({ module, onClose }) => {
         }
       }
     }
-  };
+  };  
 
   return (
     <div className={styles.formContainer}>
@@ -116,17 +117,6 @@ const ModuleForm = ({ module, onClose }) => {
             onChange={handleInputChange}
           />
           {errors.description && <span className={styles.errorMessage}>{errors.description}</span>}
-        </div>
-        <div className={styles.formBlock}>
-          <label htmlFor="order">Order</label>
-          <input
-            id="order"
-            name="order"
-            type="number"
-            value={formData.order}
-            onChange={handleInputChange}
-          />
-          {errors.order && <span className={styles.errorMessage}>{errors.order}</span>}
         </div>
         <div className={styles.formBlock}>
           <label htmlFor="files">Add Files</label>
