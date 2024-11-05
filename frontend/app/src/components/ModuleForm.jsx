@@ -1,22 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import { createModule, updateModule } from '../features/course/moduleSlice';
-import { uploadFile } from '../features/course/fileSlice';
-import { useNavigate } from 'react-router-dom'; // 追加
+import { uploadFile, deleteFile } from '../features/course/fileSlice';
+import { useNavigate } from 'react-router-dom';
 import styles from './styles/ModuleForm.module.css';
 
-const ModuleForm = ({ module, courseId }) => {  // onClose を削除
+const ModuleForm = ({ module, courseId, existingFiles = [] }) => {
   const dispatch = useDispatch();
-  const navigate = useNavigate(); // navigateを追加
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     title: module?.title || '',
     description: module?.description || '',
   });
+
   const [files, setFiles] = useState([]);
+  const [removedFileIds, setRemovedFileIds] = useState([]);
   const [errors, setErrors] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
 
   const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.doc', '.docx', '.ppt', '.pptx'];
+
+  useEffect(() => {
+    const moduleFiles = existingFiles.filter(file => file.module === module?.id);
+    setFiles(moduleFiles);
+  }, [existingFiles, module?.id]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -28,15 +35,30 @@ const ModuleForm = ({ module, courseId }) => {  // onClose を削除
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
-    const invalidFiles = selectedFiles.filter(file => !validExtensions.includes(file.name.slice(file.name.lastIndexOf('.')).toLowerCase()));
+    const validFiles = selectedFiles.filter(file =>
+      validExtensions.includes(file.name.slice(file.name.lastIndexOf('.')).toLowerCase())
+    );
+    const invalidFiles = selectedFiles.filter(file =>
+      !validExtensions.includes(file.name.slice(file.name.lastIndexOf('.')).toLowerCase())
+    );
 
     if (invalidFiles.length > 0) {
-      setErrors({ ...errors, files: `Invalid file type(s): ${invalidFiles.map(file => file.name).join(', ')}. Allowed extensions are: ${validExtensions.join(', ')}` });
-      setFiles([]);
+      setErrors({ ...errors, files: `Invalid file type(s): ${invalidFiles.map(file => file.name).join(', ')}.` });
     } else {
       setErrors({ ...errors, files: null });
-      setFiles(selectedFiles);
     }
+
+    setFiles([...files, ...validFiles]);
+  };
+
+  const handleRemoveFile = (index) => {
+    const fileToRemove = files[index];
+    if (fileToRemove && !(fileToRemove instanceof File)) {
+      setRemovedFileIds([...removedFileIds, fileToRemove.id]);
+    }
+
+    const updatedFiles = files.filter((_, i) => i !== index);
+    setFiles(updatedFiles);
   };
 
   const handleSubmit = async (e) => {
@@ -51,47 +73,52 @@ const ModuleForm = ({ module, courseId }) => {  // onClose を削除
   
     if (Object.keys(newErrors).length === 0 && !errors.files) {
       try {
-        const formDataToSend = new FormData();
-        formDataToSend.append('title', formData.title);
-        formDataToSend.append('description', formData.description);
-        formDataToSend.append('course', courseId); // courseIdを追加
-  
-        // ファイルをFormDataに追加
-        files.forEach((file) => {
-          formDataToSend.append('file', file);
-        });
-  
         let moduleResponse;
+        
+        // モジュールの新規作成または更新
+        const moduleData = new FormData();
+        moduleData.append('title', formData.title);
+        moduleData.append('description', formData.description);
+        moduleData.append('course', courseId);
+  
         if (module) {
-          moduleResponse = await dispatch(updateModule({ id: module.id, moduleData: formDataToSend })).unwrap();
+          // 既存モジュールの更新
+          moduleResponse = await dispatch(updateModule({ id: module.id, moduleData })).unwrap();
           setSuccessMessage('Module updated successfully');
         } else {
-          moduleResponse = await dispatch(createModule(formDataToSend)).unwrap();
+          // 新規モジュールの作成
+          moduleResponse = await dispatch(createModule(moduleData)).unwrap();
           setSuccessMessage('Module created successfully');
         }
   
+        // ファイルをFileエンドポイントに送信
+        for (let file of files) {
+          if (file instanceof File) {
+            const fileData = new FormData();
+            fileData.append('file', file);
+            fileData.append('title', file.name);
+            fileData.append('module', moduleResponse.id);
+  
+            console.log("Uploading file:", file.name);
+            await dispatch(uploadFile(fileData));
+          }
+        }
+  
+        // 削除するファイルの処理
+        for (let fileId of removedFileIds) {
+          console.log("Deleting file with ID:", fileId);
+          await dispatch(deleteFile(fileId)); // 削除アクションを呼び出し
+        }
+  
         setErrors({});
-        navigate(`/courses/${courseId}`); // 送信後にCourseDetailPageにリダイレクト
+        navigate(`/courses/${courseId}`);
       } catch (error) {
         console.log('Full error object:', error);
-        try {
-          const errorData = JSON.parse(error);
-          if (typeof errorData === 'object') {
-            const dynamicErrors = {};
-            Object.entries(errorData).forEach(([key, value]) => {
-              dynamicErrors[key] = Array.isArray(value) ? value.join(', ') : value;
-            });
-            setErrors(dynamicErrors);
-          } else {
-            setErrors({ form: errorData });
-          }
-        } catch (e) {
-          console.error('Failed to parse error message:', e);
-          setErrors({ form: 'Failed to save module. Please try again.' });
-        }
+        setErrors({ form: 'Failed to save module or files. Please try again.' });
       }
     }
-  };  
+  };
+  
 
   return (
     <div className={styles.formContainer}>
@@ -118,17 +145,36 @@ const ModuleForm = ({ module, courseId }) => {  // onClose を削除
           />
           {errors.description && <span className={styles.errorMessage}>{errors.description}</span>}
         </div>
+
         <div className={styles.formBlock}>
-          <label htmlFor="files">Add Files</label>
+          <label>Add Files</label>
           <input
-            id="files"
-            name="files"
+            id="file-input"
             type="file"
             multiple
             onChange={handleFileChange}
+            style={{ display: 'none' }}
           />
+          <button
+            type="button"
+            onClick={() => document.getElementById('file-input').click()}
+            className={styles.chooseFileButton}
+          >
+            Choose Files
+          </button>
+          <div className={styles.fileList}>
+            {files.map((file, index) => (
+              <div key={index} className={styles.fileItem}>
+                <span>{file.name || file.title}</span>
+                <button type="button" onClick={() => handleRemoveFile(index)}>
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
           {errors.files && <span className={styles.errorMessage}>{errors.files}</span>}
         </div>
+        
         {errors.form && <div role="alert" className={styles.errorMessage}>{errors.form}</div>}
         {successMessage && <div role="alert" className={styles.successMessage}>{successMessage}</div>}
         <button type="submit" className={styles.submitBtn}>
