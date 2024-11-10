@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     CourseCreateAPIView, CourseUpdateAPIView, CourseDeleteAPIView, CourseListAPIView,
     ModuleCreateAPIView, ModuleUpdateAPIView, ModuleDeleteAPIView, ModuleListAPIView,
-    FileCreateAPIView, FileUpdateAPIView, FileDeleteAPIView, FileListAPIView
+    FileCreateAPIView, FileUpdateAPIView, FileDeleteAPIView, FileListAPIView, FileDeleteMultipleAPIView
 )
 
 urlpatterns = [
@@ -23,4 +23,5 @@ urlpatterns = [
     path('files/create/', FileCreateAPIView.as_view(), name='file-create'),
     path('files/<int:pk>/update/', FileUpdateAPIView.as_view(), name='file-update'),
     path('files/<int:pk>/delete/', FileDeleteAPIView.as_view(), name='file-delete'),
+    path('files/delete/', FileDeleteMultipleAPIView.as_view(), name='file-delete-multiple'),
 ]

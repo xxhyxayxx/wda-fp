@@ -35,9 +35,9 @@ def validate_file_type(value):
 class File(models.Model):
     module = models.ForeignKey(Module, related_name='files', on_delete=models.CASCADE)
     file = models.FileField(upload_to='course_files/', validators=[validate_file_type])
-    title = models.CharField(max_length=255)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_files')  # 作成者を追加
 
     def __str__(self):
-        return self.title
+        return os.path.basename(self.file.name)  # ファイル名をそのまま返す
+

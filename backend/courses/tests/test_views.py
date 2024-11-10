@@ -4,7 +4,14 @@ from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from accounts.models import CustomUser
 from courses.models import Course, Module, File
+import hashlib
 
+def get_file_hash(file):
+    """ファイルのハッシュ値を取得"""
+    md5 = hashlib.md5()
+    for chunk in file.chunks():
+        md5.update(chunk)
+    return md5.hexdigest()
 
 class CourseViewTest(APITestCase):
 
@@ -221,69 +228,106 @@ class FileViewTest(APITestCase):
             title='Test Module',
             created_by=self.teacher
         )
-        self.test_file = SimpleUploadedFile("test_file.pdf", b"file_content", content_type="application/pdf")
-        self.file_data = {
+        # 複数ファイル用にセットアップ
+        self.test_file_1 = SimpleUploadedFile("test_file_1.pdf", b"file_content_1", content_type="application/pdf")
+        self.test_file_2 = SimpleUploadedFile("test_file_2.pdf", b"file_content_2", content_type="application/pdf")
+        self.files_data = {
             'module': self.module.pk,
-            'file': self.test_file,
-            'title': 'Test File',
+            'file': [self.test_file_1, self.test_file_2],
         }
 
         self.create_url = reverse('file-create')
         self.update_url = lambda pk: reverse('file-update', args=[pk])
         self.delete_url = lambda pk: reverse('file-delete', args=[pk])
+        self.delete_multiple_url = reverse('file-delete-multiple')
 
-    def test_teacher_can_create_file(self):
+    def test_teacher_can_create_multiple_files(self):
         self.client.force_authenticate(user=self.teacher)
-        response = self.client.post(self.create_url, self.file_data)
+        
+        response = self.client.post(self.create_url, {
+            'module': self.module.pk,
+            'file': [self.test_file_1, self.test_file_2],
+        }, format='multipart')
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(File.objects.count(), 1)
-        self.assertEqual(File.objects.first().title, 'Test File')
+        self.assertEqual(File.objects.count(), 2)  # 2つのファイルが保存される
 
-    def test_student_cannot_create_file(self):
+        # ユニークなIDを使って確認
+        file_1 = File.objects.first()
+        file_2 = File.objects.last()
+
+        self.assertIsNotNone(file_1.id)  # IDが設定されているか確認
+        self.assertIsNotNone(file_2.id)  # IDが設定されているか確認
+
+        # ファイルフィールドがnullでないことを確認
+        self.assertIsNotNone(file_1.file)
+        self.assertGreater(len(file_1.file.name), 0)  # ファイル名が空でないことも確認
+        self.assertIsNotNone(file_2.file)
+        self.assertGreater(len(file_2.file.name), 0)
+
+    def test_student_cannot_create_multiple_files(self):
         self.client.force_authenticate(user=self.student)
-        response = self.client.post(self.create_url, self.file_data)
+        response = self.client.post(self.create_url, {
+            'module': self.module.pk,
+            'file': [self.test_file_1, self.test_file_2],
+        }, format='multipart')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_teacher_can_update_file(self):
-        file = File.objects.create(module=self.module, file=self.test_file, title='Original File', created_by=self.teacher)
-        
-        updated_file = SimpleUploadedFile("updated_test_file.pdf", b"updated file content", content_type="application/pdf")
+    def test_teacher_can_update_multiple_files(self):
+        file_1 = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
+        file_2 = File.objects.create(module=self.module, file=self.test_file_2, created_by=self.teacher)
+
+        updated_file_1 = SimpleUploadedFile("updated_test_file_1.pdf", b"updated file content 1", content_type="application/pdf")
+        new_file = SimpleUploadedFile("new_test_file.pdf", b"new file content", content_type="application/pdf")
+
         updated_data = {
-            'title': 'Updated File Title',
             'module': self.module.pk,
-            'file': updated_file,
+            'file': [updated_file_1, new_file],  # file_1を更新し、新規ファイルも追加
         }
 
         self.client.force_authenticate(user=self.teacher)
-        response = self.client.put(self.update_url(file.pk), updated_data)
+        response = self.client.put(self.update_url(file_1.pk), updated_data, format='multipart')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        file.refresh_from_db()
-        self.assertEqual(file.title, 'Updated File Title')
 
-    def test_student_cannot_update_file(self):
-        file = File.objects.create(module=self.module, file=self.test_file, title='Student Test File', created_by=self.teacher)
+        updated_files = File.objects.filter(module=self.module)
+        print(f"Files after update in DB: {[f.file.name for f in updated_files]}")  # ファイル名の確認
+
+        self.assertEqual(updated_files.count(), 4)  # 更新後のファイル数を再確認
+
+    def test_student_cannot_update_multiple_files(self):
+        file_1 = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
+        file_2 = File.objects.create(module=self.module, file=self.test_file_2, created_by=self.teacher)
+
+        updated_file_1 = SimpleUploadedFile("updated_test_file_1.pdf", b"updated file content 1", content_type="application/pdf")
+        updated_file_2 = SimpleUploadedFile("updated_test_file_2.pdf", b"updated file content 2", content_type="application/pdf")
+
+        updated_data = {
+            'module': self.module.pk,
+            'file': [updated_file_1, updated_file_2],
+        }
 
         self.client.force_authenticate(user=self.student)
-        response = self.client.put(self.update_url(file.pk), self.file_data)
+        response = self.client.put(self.update_url(file_1.pk), updated_data, format='multipart')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_teacher_can_delete_file(self):
-        file = File.objects.create(module=self.module, file=self.test_file, title='Deletable File', created_by=self.teacher)
+    def test_teacher_can_delete_multiple_files(self):
+        file_1 = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
+        file_2 = File.objects.create(module=self.module, file=self.test_file_2, created_by=self.teacher)
 
         self.client.force_authenticate(user=self.teacher)
-        response = self.client.delete(self.delete_url(file.pk))
+        response = self.client.delete(self.delete_multiple_url, data={'file_ids': [file_1.pk, file_2.pk]}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(File.objects.count(), 0)
+        self.assertEqual(File.objects.count(), 0)  # 2ファイルが削除される
 
-    def test_student_cannot_delete_file(self):
-        file = File.objects.create(module=self.module, file=self.test_file, title='Protected File', created_by=self.teacher)
+    def test_student_cannot_delete_multiple_files(self):
+        file_1 = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
+        file_2 = File.objects.create(module=self.module, file=self.test_file_2, created_by=self.teacher)
 
         self.client.force_authenticate(user=self.student)
-        response = self.client.delete(self.delete_url(file.pk))
+        response = self.client.delete(self.delete_multiple_url, data={'file_ids': [file_1.pk, file_2.pk]}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

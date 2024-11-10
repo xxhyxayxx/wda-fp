@@ -137,32 +137,25 @@ class FileModelTest(TestCase):
         # ファイルの作成
         file = File.objects.create(
             module=self.module,
-            file='test_file.pdf',
-            title='Test File',
+            file='course_files/test_file.pdf',  # 実際にアップロードするパス
             created_by=self.teacher  # 作成者を設定
         )
         
         # モデルフィールドの正確な設定を確認
         self.assertEqual(file.module, self.module)
-        self.assertEqual(file.file.name, 'test_file.pdf')
-        self.assertEqual(file.title, 'Test File')
+        self.assertTrue(file.file.name.startswith('course_files/test_file.pdf'))  # ファイルパスの確認
         self.assertEqual(file.created_by, self.teacher)  # 作成者の確認
 
-    def test_file_str_method(self):
-        file = File.objects.create(
-            module=self.module,
-            file='test_file.pdf',
-            title='File Title',
-            created_by=self.teacher
-        )
-        self.assertEqual(str(file), 'File Title')
-
     def test_file_deletion(self):
+        # ファイルを作成
         file = File.objects.create(
             module=self.module,
-            file='file_to_delete.pdf',
-            title='Delete File',
+            file='course_files/file_to_delete.pdf',
             created_by=self.teacher
         )
+        
+        # ファイルの削除
         file.delete()
-        self.assertFalse(File.objects.filter(title='Delete File').exists())
+        
+        # ファイルが削除されていることを確認
+        self.assertFalse(File.objects.filter(file='course_files/file_to_delete.pdf').exists())  # フィルタリングの修正

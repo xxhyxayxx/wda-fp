@@ -20,6 +20,8 @@ class ModuleAdmin(admin.ModelAdmin):
 
 @admin.register(File)
 class FileAdmin(admin.ModelAdmin):
-    list_display = ('title', 'module', 'uploaded_at')
-    search_fields = ('title', 'module__title')
-    list_filter = ('module',)
+    list_display = ['module', 'file_name', 'uploaded_at', 'created_by']
+    
+    def file_name(self, obj):
+        return obj.file.name  # ファイルの名前を返す
+    file_name.short_description = 'File Name'  # 管理画面に表示されるカラム名を設定

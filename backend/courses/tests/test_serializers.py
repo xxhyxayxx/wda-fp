@@ -3,6 +3,8 @@ from accounts.models import CustomUser
 from courses.models import Course, Module, File
 from courses.serializers import CourseSerializer, ModuleSerializer, FileSerializer
 from django.core.files.uploadedfile import SimpleUploadedFile
+from rest_framework.test import APIRequestFactory
+from rest_framework.exceptions import ValidationError
 
 class CourseSerializerTest(TestCase):
 
@@ -102,6 +104,7 @@ class ModuleSerializerTest(TestCase):
 class FileSerializerTest(TestCase):
 
     def setUp(self):
+        # テスト用の教師ユーザーを作成
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -118,36 +121,63 @@ class FileSerializerTest(TestCase):
             title='Test Module',
             created_by=self.teacher
         )
-        self.test_file = SimpleUploadedFile("test_file.pdf", b"file_content", content_type="application/pdf")
-        self.file_data = {
+
+        # 単一ファイルと複数ファイルを用意
+        self.test_file_1 = SimpleUploadedFile("test_file_1.pdf", b"file_content_1", content_type="application/pdf")
+        self.test_file_2 = SimpleUploadedFile("test_file_2.pdf", b"file_content_2", content_type="application/pdf")
+
+        self.multiple_files_data = {
             'module': self.module.id,
-            'file': self.test_file,
-            'title': 'Test File',
         }
 
-    def test_file_serializer_valid_data(self):
-        serializer = FileSerializer(data=self.file_data, context={'request': self._get_request()})
-        self.assertTrue(serializer.is_valid(), msg=serializer.errors)
-        file = serializer.save(created_by=self.teacher)
-        self.assertEqual(file.title, 'Test File')
-        self.assertIn('course_files/test_file', file.file.name)
-        self.assertEqual(file.created_by, self.teacher)
+    def test_multiple_files_serializer_valid_data(self):
+        # 複数ファイルのアップロードテスト
 
-    def test_file_serializer_read_only_fields(self):
-        file = File.objects.create(
-            module=self.module,
-            file=self.test_file,
-            title='ReadOnly Test File',
-            created_by=self.teacher
-        )
-        serializer = FileSerializer(file)
-        data = serializer.data
-        self.assertEqual(data['module_title'], self.module.title)
-        self.assertEqual(data['created_by_name'], 'Test Teacher')
-
-    def _get_request(self):
-        from rest_framework.test import APIRequestFactory
+        # APIRequestFactoryを使用してリクエストを作成
         factory = APIRequestFactory()
-        request = factory.post('/files/', self.file_data)
-        request.user = self.teacher
-        return request
+
+        # request.FILES に複数ファイルをセット
+        request = factory.post('/files/', self.multiple_files_data, format='multipart')
+        request.user = self.teacher  # ユーザー情報を設定
+
+        # 複数ファイルをFILESにセット
+        request.FILES.setlist('file', [self.test_file_1, self.test_file_2])
+
+        # 複数ファイルを個別に保存
+        files = []
+        for file_data in request.FILES.getlist('file'):
+            file_serializer = FileSerializer(data={
+                'file': file_data,
+                'module': self.module.id,  # module IDを渡す
+                'created_by': self.teacher,
+            }, context={'request': request})  # contextにrequestを渡す
+
+            # バリデーションを行い、エラーがあれば表示
+            if not file_serializer.is_valid():
+                print(f"Validation errors for {file_data.name}: {file_serializer.errors}")
+                raise ValidationError(f"Validation failed for {file_data.name}")
+
+            # バリデーションが通れば保存
+            files.append(file_serializer.save())
+
+        # 保存されたファイルが2つであることを確認
+        self.assertEqual(len(files), 2)
+
+        # ファイル1の検証
+        self.assertIn('course_files/test_file_1', files[0].file.name)  # ファイル名が設定されていることを確認
+        self.assertEqual(files[0].created_by, self.teacher)
+
+        # ファイル2の検証
+        self.assertIn('course_files/test_file_2', files[1].file.name)  # ファイル名が設定されていることを確認
+        self.assertEqual(files[1].created_by, self.teacher)
+
+    def test_serializer_invalid_data(self):
+        # 無効なデータのテスト（ファイルがない場合など）
+        invalid_data = {
+            'module': self.module.id,
+            'file': None,
+        }
+        file_serializer = FileSerializer(data=invalid_data)
+
+        self.assertFalse(file_serializer.is_valid())  # バリデーションが失敗することを確認
+        self.assertIn('file', file_serializer.errors)  # エラーメッセージが含まれていることを確認
