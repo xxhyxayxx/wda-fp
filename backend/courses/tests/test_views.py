@@ -201,7 +201,7 @@ class ModuleViewTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-class FileViewTest(APITestCase):
+class FileBatchUpdateTest(APITestCase):
 
     def setUp(self):
         self.teacher = CustomUser.objects.create_user(
@@ -228,106 +228,80 @@ class FileViewTest(APITestCase):
             title='Test Module',
             created_by=self.teacher
         )
-        # 複数ファイル用にセットアップ
+        # テスト用ファイルのセットアップ
         self.test_file_1 = SimpleUploadedFile("test_file_1.pdf", b"file_content_1", content_type="application/pdf")
         self.test_file_2 = SimpleUploadedFile("test_file_2.pdf", b"file_content_2", content_type="application/pdf")
-        self.files_data = {
-            'module': self.module.pk,
-            'file': [self.test_file_1, self.test_file_2],
-        }
-
-        self.create_url = reverse('file-create')
-        self.update_url = lambda pk: reverse('file-update', args=[pk])
-        self.delete_url = lambda pk: reverse('file-delete', args=[pk])
-        self.delete_multiple_url = reverse('file-delete-multiple')
-
-    def test_teacher_can_create_multiple_files(self):
-        self.client.force_authenticate(user=self.teacher)
         
-        response = self.client.post(self.create_url, {
-            'module': self.module.pk,
-            'file': [self.test_file_1, self.test_file_2],
-        }, format='multipart')
+        # ファイルバッチ更新エンドポイントのURL
+        self.batch_update_url = reverse('file-batch-update')
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(File.objects.count(), 2)  # 2つのファイルが保存される
+    def test_teacher_can_batch_update_files(self):
+        # 初期ファイルの作成
+        existing_file = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
 
-        # ユニークなIDを使って確認
-        file_1 = File.objects.first()
-        file_2 = File.objects.last()
-
-        self.assertIsNotNone(file_1.id)  # IDが設定されているか確認
-        self.assertIsNotNone(file_2.id)  # IDが設定されているか確認
-
-        # ファイルフィールドがnullでないことを確認
-        self.assertIsNotNone(file_1.file)
-        self.assertGreater(len(file_1.file.name), 0)  # ファイル名が空でないことも確認
-        self.assertIsNotNone(file_2.file)
-        self.assertGreater(len(file_2.file.name), 0)
-
-    def test_student_cannot_create_multiple_files(self):
-        self.client.force_authenticate(user=self.student)
-        response = self.client.post(self.create_url, {
-            'module': self.module.pk,
-            'file': [self.test_file_1, self.test_file_2],
-        }, format='multipart')
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_teacher_can_update_multiple_files(self):
-        file_1 = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
-        file_2 = File.objects.create(module=self.module, file=self.test_file_2, created_by=self.teacher)
-
-        updated_file_1 = SimpleUploadedFile("updated_test_file_1.pdf", b"updated file content 1", content_type="application/pdf")
+        # 新規ファイルと更新ファイルの準備
         new_file = SimpleUploadedFile("new_test_file.pdf", b"new file content", content_type="application/pdf")
+        updated_file = SimpleUploadedFile("updated_test_file_1.pdf", b"updated file content 1", content_type="application/pdf")
 
-        updated_data = {
+        # バッチ更新リクエストの準備
+        data = {
             'module': self.module.pk,
-            'file': [updated_file_1, new_file],  # file_1を更新し、新規ファイルも追加
+            'files_to_create': [new_file],  # 新規ファイル
+            'files_to_update': [updated_file],  # 既存ファイルの更新
+            'files_to_update_ids': [existing_file.pk],  # 更新するファイルのID
+            'files_to_delete': [existing_file.pk],  # 削除するファイルID
         }
 
         self.client.force_authenticate(user=self.teacher)
-        response = self.client.put(self.update_url(file_1.pk), updated_data, format='multipart')
+        response = self.client.post(self.batch_update_url, data, format='multipart')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        updated_files = File.objects.filter(module=self.module)
-        print(f"Files after update in DB: {[f.file.name for f in updated_files]}")  # ファイル名の確認
+        # 作成、更新、削除が正しく行われたかの確認
+        created_files = response.data.get('created')
+        updated_files = response.data.get('updated')
+        deleted_files = response.data.get('deleted')
 
-        self.assertEqual(updated_files.count(), 4)  # 更新後のファイル数を再確認
+        self.assertEqual(len(created_files), 1)  # 新規ファイルが1件作成される
+        self.assertEqual(len(updated_files), 1)  # 既存ファイルが1件更新される
+        self.assertEqual(len(deleted_files), 1)  # 削除対象のファイルが1件削除される
 
-    def test_student_cannot_update_multiple_files(self):
-        file_1 = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
-        file_2 = File.objects.create(module=self.module, file=self.test_file_2, created_by=self.teacher)
+        # ファイル数を確認
+        self.assertEqual(File.objects.filter(module=self.module).count(), 1)
 
-        updated_file_1 = SimpleUploadedFile("updated_test_file_1.pdf", b"updated file content 1", content_type="application/pdf")
-        updated_file_2 = SimpleUploadedFile("updated_test_file_2.pdf", b"updated file content 2", content_type="application/pdf")
+    def test_student_cannot_batch_update_files(self):
+        existing_file = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
+        new_file = SimpleUploadedFile("new_test_file.pdf", b"new file content", content_type="application/pdf")
+        updated_file = SimpleUploadedFile("updated_test_file_1.pdf", b"updated file content 1", content_type="application/pdf")
 
-        updated_data = {
+        data = {
             'module': self.module.pk,
-            'file': [updated_file_1, updated_file_2],
+            'files_to_create': [new_file],
+            'files_to_update': [updated_file],
+            'files_to_update_ids': [existing_file.pk],
+            'files_to_delete': [existing_file.pk],
         }
 
         self.client.force_authenticate(user=self.student)
-        response = self.client.put(self.update_url(file_1.pk), updated_data, format='multipart')
+        response = self.client.post(self.batch_update_url, data, format='multipart')
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_teacher_can_delete_multiple_files(self):
-        file_1 = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
-        file_2 = File.objects.create(module=self.module, file=self.test_file_2, created_by=self.teacher)
+    def test_batch_update_files_with_missing_data(self):
+        # 必要なデータを送信しなかった場合のエラーハンドリング
+        data = {
+            'module': self.module.pk,
+            'files_to_create': [],
+            'files_to_update': [],
+            'files_to_update_ids': [],
+            'files_to_delete': [],
+        }
 
         self.client.force_authenticate(user=self.teacher)
-        response = self.client.delete(self.delete_multiple_url, data={'file_ids': [file_1.pk, file_2.pk]}, format='json')
+        response = self.client.post(self.batch_update_url, data, format='multipart')
 
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(File.objects.count(), 0)  # 2ファイルが削除される
-
-    def test_student_cannot_delete_multiple_files(self):
-        file_1 = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
-        file_2 = File.objects.create(module=self.module, file=self.test_file_2, created_by=self.teacher)
-
-        self.client.force_authenticate(user=self.student)
-        response = self.client.delete(self.delete_multiple_url, data={'file_ids': [file_1.pk, file_2.pk]}, format='json')
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        # 正常に実行されるが、処理されるファイルがない場合
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['created']), 0)
+        self.assertEqual(len(response.data['updated']), 0)
+        self.assertEqual(len(response.data['deleted']), 0)

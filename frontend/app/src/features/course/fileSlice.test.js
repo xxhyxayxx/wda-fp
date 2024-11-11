@@ -1,10 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import fileReducer, {
     fetchFiles,
-    uploadFile,
-    updateFile,
-    deleteFile,
-    deleteMultipleFiles,
+    batchUpdateFiles,
 } from './fileSlice';
 import apiClient from '../../utils/apiClient';
 
@@ -50,106 +47,38 @@ describe('fileSlice', () => {
         expect(state.error).toBe('Error fetching files');
     });
 
-    test('uploadFile - single file upload', async () => {
+    test('batchUpdateFiles - create, update, delete files', async () => {
         const moduleId = 1;
-        const newFile = { id: 2, title: 'New File', module: moduleId };
-        const mockFiles = [{ id: 1, title: 'Existing File', module: moduleId }, newFile];
-    
-        apiClient.post.mockResolvedValue({ data: newFile });
-        apiClient.get.mockResolvedValue({ data: mockFiles });
-    
-        await store.dispatch(uploadFile(newFile));
-        const state = store.getState().file;
-    
-        expect(state.files).toEqual(mockFiles); // 一覧取得によるファイル更新を確認
-        expect(state.error).toBeNull();
-    });
 
-    test('uploadFile - update existing file', async () => {
-        const moduleId = 1;
-        const existingFile = { id: 2, title: 'Existing File', module: moduleId };
-        const updatedFile = { id: 2, title: 'Updated File', module: moduleId };
-        const mockFiles = [{ id: 1, title: 'Another File', module: moduleId }, updatedFile];
-        
-        store.dispatch({ type: fetchFiles.fulfilled.type, payload: [existingFile] });
-        apiClient.post.mockResolvedValue({ data: updatedFile });
-        apiClient.get.mockResolvedValue({ data: mockFiles });
-        
-        await store.dispatch(uploadFile(updatedFile));
-        const state = store.getState().file;
-
-        expect(state.files).toEqual(mockFiles); // 更新後のファイルリストを確認
-        expect(state.error).toBeNull();
-    });
-
-    // 3. 複数ファイルの新規アップロードテスト
-    test('uploadFile - multiple new files upload', async () => {
-        const moduleId = 1;
-        const newFiles = [
-            { id: 3, title: 'New File 1', module: moduleId },
-            { id: 4, title: 'New File 2', module: moduleId }
+        const filesToCreate = [
+            new File(['file1 content'], 'file1.pdf', { type: 'application/pdf' }),
+            new File(['file2 content'], 'file2.pdf', { type: 'application/pdf' }),
         ];
-        const mockFiles = [
-            { id: 1, title: 'Existing File', module: moduleId },
-            ...newFiles
+        const filesToUpdate = [
+            { id: 2, file: new File(['updated file content'], 'updated_file.pdf', { type: 'application/pdf' }) },
         ];
+        const filesToDelete = [3];
 
-        apiClient.post.mockResolvedValue({ data: newFiles });
-        apiClient.get.mockResolvedValue({ data: mockFiles });
+        const mockResponseData = {
+            created: [{ id: 4, title: 'file1.pdf' }, { id: 5, title: 'file2.pdf' }],
+            updated: [{ id: 2, title: 'updated_file.pdf' }],
+            deleted: filesToDelete,
+        };
 
-        await store.dispatch(uploadFile(newFiles));
+        apiClient.post.mockResolvedValue({ data: mockResponseData });
+        apiClient.get.mockResolvedValue({ data: [...mockResponseData.created, ...mockResponseData.updated] });
+
+        await store.dispatch(batchUpdateFiles({
+            moduleId,
+            filesToCreate,
+            filesToUpdate,
+            filesToDelete,
+        }));
+
         const state = store.getState().file;
+        const expectedFiles = [...mockResponseData.created, ...mockResponseData.updated];
 
-        expect(state.files).toEqual(mockFiles); // 一覧取得によるファイル更新を確認
-        expect(state.error).toBeNull();
-    });
-
-    test('uploadFile - mixed existing and new files upload', async () => {
-        const moduleId = 1;
-        const existingFile = { id: 2, title: 'Existing File', module: moduleId };
-        const newFile = { id: 3, title: 'New File', module: moduleId };
-        const mockFiles = [
-            { id: 1, title: 'Another Existing File', module: moduleId },
-            existingFile,
-            newFile
-        ];
-
-        store.dispatch({ type: fetchFiles.fulfilled.type, payload: [existingFile] });
-        apiClient.post.mockResolvedValue({ data: [existingFile, newFile] });
-        apiClient.get.mockResolvedValue({ data: mockFiles });
-
-        await store.dispatch(uploadFile([existingFile, newFile]));
-        const state = store.getState().file;
-
-        expect(state.files).toEqual(mockFiles); // 更新後のファイルリストを確認
-        expect(state.error).toBeNull();
-    });
-
-    test('deleteFile - fulfilled', async () => {
-        const existingFile = { id: 1, title: 'File to Delete' };
-        store.dispatch({ type: fetchFiles.fulfilled.type, payload: [existingFile] });
-        apiClient.delete.mockResolvedValue();
-
-        await store.dispatch(deleteFile(1));
-        const state = store.getState().file;
-
-        expect(state.files).not.toContainEqual(existingFile);
-        expect(state.error).toBeNull();
-    });
-
-    // 複数ファイル削除のテスト
-    test('deleteMultipleFiles - fulfilled', async () => {
-        const filesToDelete = [
-            { id: 1, title: 'File 1' },
-            { id: 2, title: 'File 2' },
-        ];
-        store.dispatch({ type: fetchFiles.fulfilled.type, payload: filesToDelete });
-        apiClient.delete.mockResolvedValue();
-
-        await store.dispatch(deleteMultipleFiles([1, 2]));
-        const state = store.getState().file;
-
-        expect(state.files).toEqual([]);
+        expect(state.files).toEqual(expectedFiles);  // 一覧取得によるファイル更新を確認
         expect(state.error).toBeNull();
     });
 });

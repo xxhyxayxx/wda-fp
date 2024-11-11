@@ -51,47 +51,7 @@ class ModuleDeleteAPIView(generics.DestroyAPIView):
 class ModuleListAPIView(generics.ListAPIView):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
-
-
-class FileCreateAPIView(generics.CreateAPIView):
-    queryset = File.objects.all()
-    serializer_class = FileSerializer
-    permission_classes = [IsTeacher]
-
-    @transaction.atomic
-    def perform_create(self, serializer):
-        files = self.request.FILES.getlist('file')  # 複数のファイルを取得
-        if not files:
-            raise ValidationError("No files in request.FILES")
-
-        module_id = self.request.data.get('module')
-        user = self.request.user
-        file_instances = []
-
-        # 各ファイルごとにインスタンスを作成
-        for file in files:
-            file_data = {
-                'file': file,
-                'created_by': user,
-                'module': module_id,
-            }
-            # シリアライザーを使って保存
-            single_serializer = FileSerializer(data=file_data, context={'request': self.request})
-            if single_serializer.is_valid():
-                file_instance = single_serializer.save()
-                file_instances.append(file_instance)
-            else:
-                raise ValidationError(single_serializer.errors)
-
-        # シリアライズしたレスポンスデータを確認
-        response_data = FileSerializer(file_instances, many=True, context={'request': self.request}).data
-        print("Generated Response Data:", response_data)  # デバッグ用出力
-        response_data = FileSerializer(file_instances, many=True, context={'request': self.request}).data
-        print("JSON Response Data:", json.dumps(response_data, ensure_ascii=False, indent=2))
-
-        # 成功したインスタンスのリストをレスポンスとして返す
-        return Response(response_data, status=status.HTTP_201_CREATED)
-
+    
 def get_file_hash(file):
     """ファイルのハッシュ値を取得"""
     md5 = hashlib.md5()
@@ -99,91 +59,66 @@ def get_file_hash(file):
         md5.update(chunk)
     return md5.hexdigest()
 
-
-# ファイル編集ビュー
-class FileUpdateAPIView(generics.UpdateAPIView):
-    queryset = File.objects.all()
-    serializer_class = FileSerializer
+class FileBatchUpdateAPIView(APIView):
     permission_classes = [IsTeacher]
 
     @transaction.atomic
-    def perform_update(self, serializer):
-        files = self.request.FILES.getlist('file')
-        if not files:
-            raise ValidationError("No files provided for update")
+    def post(self, request, *args, **kwargs):
+        # リクエストからファイルと削除対象IDの取得
+        files_to_create = request.FILES.getlist('files_to_create')
+        files_to_update = request.FILES.getlist('files_to_update')
+        files_to_update_ids = request.data.getlist('files_to_update_ids', [])
+        files_to_delete = request.data.get('files_to_delete', [])
 
-        instance = serializer.instance
-        existing_files = {f.pk: f for f in File.objects.filter(module=instance.module)}
+        # モジュールIDやユーザー情報の取得
+        module_id = request.data.get('module')
+        user = request.user
 
-        updated_files = []  # 新規または更新されたファイルを追跡するためのリスト
+        created_files, updated_files, deleted_files = [], [], []
 
-        # ユーザーを手動で設定
-        user = self.request.user
-
-        for file in files:
-            file_hash = get_file_hash(file)  # アップロードされたファイルのハッシュ値を取得
-
-            matching_file = None
-            for f in existing_files.values():
-                # 既存ファイルのハッシュ値と比較
-                if get_file_hash(f.file) == file_hash:
-                    matching_file = f
-                    break
-
-            if matching_file:
-                # 既存ファイルの更新
-                matching_file.file = file
-                matching_file.save()
-                updated_files.append(matching_file)
-                print(f"Updated existing file: {file.name}")
+        # 1. 新規ファイルの作成
+        for file in files_to_create:
+            file_data = {'file': file, 'created_by': user, 'module': module_id}
+            serializer = FileSerializer(data=file_data, context={'request': request})
+            if serializer.is_valid():
+                created_file = serializer.save()
+                created_files.append(created_file)
             else:
-                # 新規ファイルの追加
-                new_file = File.objects.create(
-                    file=file,
-                    created_by=user,  # ユーザーを手動で設定
-                    module=instance.module,
-                )
-                updated_files.append(new_file)
-                print(f"Added new file: {file.name}")
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # デバッグ情報: モジュール内のファイル一覧
-        print(f"Files after update in module {instance.module.id}: {[f.file.name for f in File.objects.filter(module=instance.module)]}")
-
-
-class FileDeleteAPIView(generics.DestroyAPIView):
-    queryset = File.objects.all()
-    permission_classes = [IsTeacher]
-
-
-class FileDeleteMultipleAPIView(APIView):
-    permission_classes = [IsTeacher]
-
-    @transaction.atomic
-    def delete(self, request, *args, **kwargs):
-        file_ids = request.data.get('file_ids', [])
-        if not file_ids:
-            raise ValidationError("file_ids is required for deletion")
-
-        # デバッグ: 削除対象の file_ids を表示
-        print(f"Attempting to delete files with IDs: {file_ids}")
-
-        for file_id in file_ids:
+        # 2. 既存ファイルの更新（内容が異なる場合のみ）
+        for file_id, update_file in zip(files_to_update_ids, files_to_update):
             try:
-                file_instance = File.objects.get(id=file_id)
-                file_instance.delete()
-                # デバッグ: 削除されたファイルIDを表示
-                print(f"Deleted file with ID: {file_id}")
+                existing_file = File.objects.get(id=file_id, module=module_id)
+                
+                # 既存ファイルと新しいファイルのハッシュを比較
+                existing_file_hash = get_file_hash(existing_file.file)
+                new_file_hash = get_file_hash(update_file)
+
+                if existing_file_hash != new_file_hash:
+                    # 内容が異なる場合のみファイルを更新
+                    existing_file.file = update_file
+                    existing_file.save()
+                    updated_files.append(existing_file)
+                    print(f"Updated existing file: {update_file.name}")
+                else:
+                    print(f"File {update_file.name} is identical to the existing file. No update performed.")
+
             except File.DoesNotExist:
-                # デバッグ: 存在しないファイルIDを表示
-                print(f"File with ID {file_id} does not exist, skipping")
-                continue  # ファイルが存在しない場合はスキップ
+                return Response({"error": f"File with id {file_id} does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
-        # 削除後の File テーブルの総数を表示して確認
-        remaining_count = File.objects.count()
-        print(f"Remaining file count after deletion: {remaining_count}")
+        # 3. ファイルの削除
+        File.objects.filter(id__in=files_to_delete, module=module_id).delete()
+        deleted_files = files_to_delete
 
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        # レスポンスデータの作成
+        response_data = {
+            "created": FileSerializer(created_files, many=True, context={'request': request}).data,
+            "updated": FileSerializer(updated_files, many=True, context={'request': request}).data,
+            "deleted": deleted_files,
+        }
 
+        return Response(response_data, status=status.HTTP_200_OK)
 
 # ファイルリストビュー
 class FileListAPIView(generics.ListAPIView):
