@@ -5,92 +5,95 @@ import apiClient from '../../utils/apiClient';
 export const fetchFiles = createAsyncThunk(
     'file/fetchFiles',
     async (moduleId, { rejectWithValue }) => {
-      try {
-        const response = await apiClient.get(`/courses/files/?module=${moduleId}`);
-        return response.data;
-      } catch (error) {
-        return rejectWithValue(error.message);
-      }
+        try {
+            const response = await apiClient.get(`/courses/files/?module=${moduleId}`);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
     }
-  );
-  
-  // 非同期アクション: ファイルのアップロード
-  export const uploadFile = createAsyncThunk(
+);
+
+// 非同期アクション: ファイルのアップロード
+export const uploadFile = createAsyncThunk(
     'file/uploadFile',
-    async (fileData, { rejectWithValue }) => {
-      try {
-        const response = await apiClient.post('/courses/files/create/', fileData, {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        });
-        return response.data;
-      } catch (error) {
-        return rejectWithValue(error.message);
-      }
+    async (fileData, { dispatch, rejectWithValue }) => {
+        try {
+            const response = await apiClient.post('/courses/files/create/', fileData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+            // アップロード後にファイル一覧を再取得して状態を更新
+            await dispatch(fetchFiles(fileData.module));
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
     }
-  );
-  
-  // 非同期アクション: ファイルの編集
-  export const updateFile = createAsyncThunk(
-    'file/updateFile',
-    async ({ id, fileData }, { rejectWithValue }) => {
-      try {
-        const response = await apiClient.put(`/courses/files/${id}/update/`, fileData);
-        return response.data;
-      } catch (error) {
-        return rejectWithValue(error.message);
-      }
-    }
-  );
-  
-  // 非同期アクション: ファイルの削除
-  export const deleteFile = createAsyncThunk(
+);
+
+// 非同期アクション: 単一ファイルの削除
+export const deleteFile = createAsyncThunk(
     'file/deleteFile',
     async (id, { rejectWithValue }) => {
-      try {
-        await apiClient.delete(`/courses/files/${id}/delete/`);
-        return id;
-      } catch (error) {
-        return rejectWithValue(error.message);
-      }
+        try {
+            await apiClient.delete(`/courses/files/${id}/delete/`);
+            return id;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
     }
-  );
-  
-  const fileSlice = createSlice({
+);
+
+// 非同期アクション: 複数ファイルの削除
+export const deleteMultipleFiles = createAsyncThunk(
+    'file/deleteMultipleFiles',
+    async (fileIds, { rejectWithValue }) => {
+        try {
+            await apiClient.delete('/courses/files/delete/', {
+                data: { file_ids: fileIds },
+            });
+            return fileIds;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+const fileSlice = createSlice({
     name: 'file',
     initialState: {
-      files: [],
-      loading: false,
-      error: null,
+        files: [],
+        loading: false,
+        error: null,
     },
     reducers: {},
     extraReducers: (builder) => {
-      builder
-        .addCase(fetchFiles.pending, (state) => {
-          state.loading = true;
-        })
-        .addCase(fetchFiles.fulfilled, (state, action) => {
-          state.loading = false;
-          state.files = action.payload;
-        })
-        .addCase(fetchFiles.rejected, (state, action) => {
-          state.loading = false;
-          state.error = action.payload;
-        })
-        // ファイルのアップロード、編集、削除も同様に追加
-        .addCase(uploadFile.fulfilled, (state, action) => {
-          state.files.push(action.payload);
-        })
-        .addCase(updateFile.fulfilled, (state, action) => {
-          const index = state.files.findIndex(file => file.id === action.payload.id);
-          if (index !== -1) state.files[index] = action.payload;
-        })
-        .addCase(deleteFile.fulfilled, (state, action) => {
-          state.files = state.files.filter(file => file.id !== action.payload);
-        });
+        builder
+            .addCase(fetchFiles.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(fetchFiles.fulfilled, (state, action) => {
+                state.loading = false;
+                state.files = action.payload;
+            })
+            .addCase(fetchFiles.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+            // ファイルのアップロード、編集、削除も同様に追加
+            .addCase(uploadFile.fulfilled, (state) => {
+                // アップロード後の一覧再取得でstate.filesが更新されるので、ここで特に処理しなくてもOK
+                state.error = null;
+            })
+            .addCase(deleteFile.fulfilled, (state, action) => {
+                state.files = state.files.filter(file => file.id !== action.payload);
+            })
+            .addCase(deleteMultipleFiles.fulfilled, (state, action) => {
+                state.files = state.files.filter(file => !action.payload.includes(file.id));
+            });
     },
-  });
-  
-  export default fileSlice.reducer;
-  
+});
+
+export default fileSlice.reducer;
