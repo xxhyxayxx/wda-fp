@@ -68,8 +68,10 @@ class FileBatchUpdateAPIView(APIView):
         files_to_create = request.FILES.getlist('files_to_create')
         files_to_update = request.FILES.getlist('files_to_update')
         files_to_update_ids = request.data.getlist('files_to_update_ids', [])
-        files_to_delete = request.data.get('files_to_delete', [])
 
+        # files_to_deleteをリスト形式で取得
+        files_to_delete = request.data.getlist('files_to_delete')
+        
         # モジュールIDやユーザー情報の取得
         module_id = request.data.get('module')
         user = request.user
@@ -108,6 +110,7 @@ class FileBatchUpdateAPIView(APIView):
                 return Response({"error": f"File with id {file_id} does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
         # 3. ファイルの削除
+        print("Deleting files with IDs:", files_to_delete)  # デバッグ用
         File.objects.filter(id__in=files_to_delete, module=module_id).delete()
         deleted_files = files_to_delete
 

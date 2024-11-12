@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchCourses, deleteCourse } from '../features/course/courseSlice';
 import { fetchModules, deleteModule } from '../features/course/moduleSlice';
-import { fetchFiles } from '../features/course/fileSlice'; // ファイルフェッチ用のアクションをインポート
+import { fetchFiles } from '../features/course/fileSlice';
 import NavBar from './NavBar';
 import styles from './styles/CourseDetailPage.module.css';
 
@@ -13,10 +13,13 @@ const CourseDetailPage = () => {
     const navigate = useNavigate();
     const { courses } = useSelector((state) => state.course);
     const { modules } = useSelector((state) => state.module);
-    const { files } = useSelector((state) => state.file); // ファイル情報を取得
+    const { files } = useSelector((state) => state.file);
     const [course, setCourse] = useState(null);
-    const [menuOpen, setMenuOpen] = useState(null); // モジュールのメニュー管理用
-    const [courseMenuOpen, setCourseMenuOpen] = useState(false); // コースのメニュー管理用
+    const [menuOpen, setMenuOpen] = useState(null);
+    const [courseMenuOpen, setCourseMenuOpen] = useState(false);
+
+    // ファイルフェッチ済みフラグ
+    const [hasFetchedFiles, setHasFetchedFiles] = useState(false);
 
     useEffect(() => {
         async function loadCourseDetails() {
@@ -36,20 +39,16 @@ const CourseDetailPage = () => {
         loadCourseDetails();
     }, [dispatch, courseId, courses]);
 
-    // modules のロードが完了した後にファイルをフェッチする
+    // modules が初期ロードされたら、一度だけファイルをフェッチする
     useEffect(() => {
-        if (modules.length > 0) {
+        if (modules.length > 0 && !hasFetchedFiles) {
             const moduleIds = modules.map(module => module.id);
             moduleIds.forEach(moduleId => {
                 dispatch(fetchFiles(moduleId));
             });
+            setHasFetchedFiles(true); // 一度フェッチしたらフラグを更新
         }
-    }, [modules, dispatch]);
-
-    // ファイル情報をコンソールで確認
-    useEffect(() => {
-        console.log("Fetched files:", files);
-    }, [files]);
+    }, [modules, hasFetchedFiles, dispatch]);
 
     const toggleCourseMenu = () => {
         setCourseMenuOpen(!courseMenuOpen);
@@ -80,7 +79,8 @@ const CourseDetailPage = () => {
     };
 
     const handleEditModule = (moduleId) => {
-        navigate(`/edit-module/${moduleId}`);
+        const moduleFiles = files.filter(file => file.module === moduleId); // モジュールに関連するファイルのみ
+        navigate(`/edit-module/${moduleId}`, { state: { moduleFiles } }); // ファイルをstateで渡す
         setMenuOpen(null);
     };
 
@@ -136,12 +136,11 @@ const CourseDetailPage = () => {
                                         <div onClick={() => navigate(`/courses/modules/${module.id}`)}>
                                             <h4>{module.title}</h4>
                                             <p>{module.description}</p>
-                                            {/* ファイル一覧の表示 */}
                                             {files
                                                 .filter(file => file.module === module.id)
                                                 .map(file => (
                                                     <div key={file.id} className={styles.fileItem}>
-                                                        <span>{file.title}</span>
+                                                        <span>{file.file.split('/').pop()}</span>
                                                     </div>
                                             ))}
                                         </div>
