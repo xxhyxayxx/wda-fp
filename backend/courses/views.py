@@ -125,5 +125,10 @@ class FileBatchUpdateAPIView(APIView):
 
 # ファイルリストビュー
 class FileListAPIView(generics.ListAPIView):
-    queryset = File.objects.all()
     serializer_class = FileSerializer
+
+    def get_queryset(self):
+        module_id = self.request.query_params.get('module')
+        if module_id:
+            return File.objects.filter(module_id=module_id)
+        return File.objects.all()

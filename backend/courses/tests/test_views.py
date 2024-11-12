@@ -305,3 +305,36 @@ class FileBatchUpdateTest(APITestCase):
         self.assertEqual(len(response.data['created']), 0)
         self.assertEqual(len(response.data['updated']), 0)
         self.assertEqual(len(response.data['deleted']), 0)
+
+class FileListAPIViewTest(FileBatchUpdateTest):
+    def setUp(self):
+        super().setUp()
+        self.client.force_authenticate(user=self.teacher)  # 認証の追加
+
+        # テスト用のモジュールとファイルの追加
+        self.module1 = Module.objects.create(course=self.course, title="Module 1", created_by=self.teacher)
+        self.module2 = Module.objects.create(course=self.course, title="Module 2", created_by=self.teacher)
+        self.file1 = File.objects.create(module=self.module1, file="file1.txt", created_by=self.teacher)
+        self.file2 = File.objects.create(module=self.module1, file="file2.txt", created_by=self.teacher)
+        self.file3 = File.objects.create(module=self.module2, file="file3.txt", created_by=self.teacher)
+
+        # エンドポイントURL
+        self.file_list_url = reverse('file-list')
+
+    def test_get_all_files(self):
+        """すべてのファイルを取得する"""
+        response = self.client.get(self.file_list_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)  # 3つのファイルが存在する
+
+    def test_get_files_by_module_id(self):
+        """特定のモジュールに関連付けられたファイルを取得する"""
+        response = self.client.get(self.file_list_url, {'module': self.module1.id})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)  # module1に関連付けられた2つのファイルが存在する
+
+    def test_no_files_for_invalid_module_id(self):
+        """無効なモジュールIDでファイルを取得する場合"""
+        response = self.client.get(self.file_list_url, {'module': 999})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, [])  # ファイルがない場合は空のリストが返される

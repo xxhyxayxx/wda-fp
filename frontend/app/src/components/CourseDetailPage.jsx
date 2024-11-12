@@ -42,17 +42,23 @@ const CourseDetailPage = () => {
     // modules が初期ロードされたら、一度だけファイルをフェッチする
     useEffect(() => {
         if (modules.length > 0 && !hasFetchedFiles) {
-            const moduleIds = modules.map(module => module.id);
-            moduleIds.forEach(moduleId => {
+            // 関連するモジュールのみファイルをフェッチ
+            const filteredModuleIds = modules
+                .filter(module => module.course === parseInt(courseId))
+                .map(module => module.id);
+            
+            filteredModuleIds.forEach(moduleId => {
                 dispatch(fetchFiles(moduleId));
             });
+            
             setHasFetchedFiles(true); // 一度フェッチしたらフラグを更新
         }
-    }, [modules, hasFetchedFiles, dispatch]);
+    }, [modules, hasFetchedFiles, dispatch, courseId]);
 
     const toggleCourseMenu = () => {
         setCourseMenuOpen(!courseMenuOpen);
-    };
+    };    
+    
 
     const toggleModuleMenu = (moduleId) => {
         setMenuOpen(menuOpen === moduleId ? null : moduleId);
