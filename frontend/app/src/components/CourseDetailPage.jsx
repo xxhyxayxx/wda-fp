@@ -17,6 +17,7 @@ const CourseDetailPage = () => {
     const [course, setCourse] = useState(null);
     const [menuOpen, setMenuOpen] = useState(null);
     const [courseMenuOpen, setCourseMenuOpen] = useState(false);
+    const [fileDrawerOpen, setFileDrawerOpen] = useState({}); // モジュールごとのドロワー開閉状態を追跡
 
     // ファイルフェッチ済みフラグ
     const [hasFetchedFiles, setHasFetchedFiles] = useState(false);
@@ -46,22 +47,47 @@ const CourseDetailPage = () => {
             const filteredModuleIds = modules
                 .filter(module => module.course === parseInt(courseId))
                 .map(module => module.id);
-            
+
             filteredModuleIds.forEach(moduleId => {
                 dispatch(fetchFiles(moduleId));
             });
-            
+
             setHasFetchedFiles(true); // 一度フェッチしたらフラグを更新
         }
     }, [modules, hasFetchedFiles, dispatch, courseId]);
 
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            // ドロップダウンメニューまたはトリガー以外をクリックした場合、メニューを閉じる
+            if (!event.target.closest(`.${styles.dropdownMenu}`) && !event.target.closest('.fa-ellipsis')) {
+                setMenuOpen(null);
+                setCourseMenuOpen(false);
+            }
+        };
+
+        // mousedown イベントリスナーを追加
+        document.addEventListener('mousedown', handleClickOutside);
+
+        // クリーンアップ
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
     const toggleCourseMenu = () => {
         setCourseMenuOpen(!courseMenuOpen);
-    };    
-    
+    };
+
 
     const toggleModuleMenu = (moduleId) => {
         setMenuOpen(menuOpen === moduleId ? null : moduleId);
+    };
+
+    const toggleFileDrawer = (moduleId) => {
+        setFileDrawerOpen(prevState => ({
+            ...prevState,
+            [moduleId]: !prevState[moduleId] // モジュールごとの開閉状態をトグル
+        }));
     };
 
     const handleEditCourse = () => {
@@ -127,49 +153,72 @@ const CourseDetailPage = () => {
                                 </div>
                             )}
                         </div>
-                        <p>{course.description}</p>
-                        <p><strong>Category:</strong> {course.category}</p>
-                        <p><strong>Published:</strong> {course.is_published ? 'Yes' : 'No'}</p>
-
+                        <p className={styles.description}>{course.description}</p>
+                        <p className={styles.category}>{course.category}</p>
                         <div className={styles.modulesSection}>
-                            <h3>Modules</h3>
-                            <button onClick={handleAddModule} className={styles.addModuleButton}>
-                                <i className="fa-solid fa-plus" style={{ marginRight: '5px' }}></i>Add Module
-                            </button>
-                            {filteredModules.length > 0 ? (
-                                filteredModules.map((module) => (
-                                    <div key={module.id} className={styles.moduleCard}>
-                                        <div onClick={() => navigate(`/courses/modules/${module.id}`)}>
-                                            <h4>{module.title}</h4>
-                                            <p>{module.description}</p>
-                                            {files
-                                                .filter(file => file.module === module.id)
-                                                .map(file => (
-                                                    <div key={file.id} className={styles.fileItem}>
-                                                        <span>{file.file.split('/').pop()}</span>
-                                                    </div>
-                                            ))}
-                                        </div>
-                                        <i
-                                            className="fa-solid fa-ellipsis"
-                                            onClick={() => toggleModuleMenu(module.id)}
-                                            style={{ cursor: 'pointer' }}
-                                        ></i>
-                                        {menuOpen === module.id && (
-                                            <div className={styles.dropdownMenu}>
-                                                <button onClick={() => handleEditModule(module.id)} className={styles.editButton}>
-                                                    <i className="fa-solid fa-pen-to-square" style={{ marginRight: '5px' }}></i>Edit
-                                                </button>
-                                                <button onClick={() => handleDeleteModule(module.id)} className={styles.deleteButton}>
-                                                    <i className="fa-solid fa-trash" style={{ marginRight: '5px' }}></i>Delete
-                                                </button>
+                        {filteredModules.length > 0 ? (
+                                filteredModules.map((module) => {
+                                    const moduleFiles = files.filter(file => file.module === module.id);
+                                    const isDrawerOpen = fileDrawerOpen[module.id];
+                                    return (
+                                        <div key={module.id} className={styles.moduleCard}>
+                                            <div className={styles.moduleHeader}>
+                                                <h4>{module.title}</h4>
+                                                <ul className={styles.moduleMenuIcon}>
+                                                    <li>
+                                                        <i
+                                                            className="fa-solid fa-ellipsis"
+                                                            onClick={() => toggleModuleMenu(module.id)}
+                                                            style={{ cursor: 'pointer' }}
+                                                        ></i>
+                                                        {menuOpen === module.id && (
+                                                            <div className={styles.dropdownMenu}>
+                                                                <button onClick={() => handleEditModule(module.id)} className={styles.editButton}>
+                                                                    <i className="fa-solid fa-pen-to-square" style={{ marginRight: '5px' }}></i>Edit
+                                                                </button>
+                                                                <button onClick={() => handleDeleteModule(module.id)} className={styles.deleteButton}>
+                                                                    <i className="fa-solid fa-trash" style={{ marginRight: '5px' }}></i>Delete
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </li>
+                                                    <li>
+                                                        <i
+                                                            className={`fa-solid ${isDrawerOpen ? 'fa-chevron-up' : 'fa-chevron-down'}`}
+                                                            onClick={() => toggleFileDrawer(module.id)}
+                                                            style={{ cursor: 'pointer', marginLeft: '10px' }}
+                                                        ></i>
+                                                    </li>
+                                                </ul>
                                             </div>
-                                        )}
-                                    </div>
-                                ))
+
+                                            {isDrawerOpen && (
+                                                <div className={styles.fileDrawer}>
+                                                    <p className={styles.moduleDescription}>{module.description}</p>
+                                                    {moduleFiles.length > 0 && (
+                                                        moduleFiles.map(file => (
+                                                            <div key={file.id} className={styles.fileItem}>
+                                                                <a className={styles.fileLinkText} href={file.file} target="_blank" rel="noopener noreferrer">
+                                                                    {file.file.split('/').pop()}
+                                                                </a>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })
                             ) : (
                                 <p>No modules available.</p>
                             )}
+
+
+
+
+                            <button onClick={handleAddModule} className={styles.addModuleButton}>
+                                <i className="fa-solid fa-plus" style={{ marginRight: '5px' }}></i>Add Module
+                            </button>
                         </div>
                     </>
                 ) : (
