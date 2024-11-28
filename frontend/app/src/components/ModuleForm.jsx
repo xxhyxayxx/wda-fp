@@ -18,6 +18,7 @@ const ModuleForm = ({ module, courseId }) => {
     const [filesToDelete, setFilesToDelete] = useState([]);
     const [errors, setErrors] = useState({});
     const [successMessage, setSuccessMessage] = useState('');
+    const [fileName, setFileName] = useState('');
 
     useEffect(() => {
         if (module && moduleFiles) {
@@ -33,6 +34,10 @@ const ModuleForm = ({ module, courseId }) => {
     const handleFileChange = (e) => {
         const files = Array.from(e.target.files);
         setSelectedFiles((prevFiles) => [...prevFiles, ...files]);
+        if (files.length > 0) {
+            const truncatedName = files[0].name.length > 20 ? `${files[0].name.slice(0, 17)}...` : files[0].name;
+            setFileName(truncatedName);
+        }
     };
 
     const handleRemoveFile = (file) => {
@@ -96,12 +101,18 @@ const ModuleForm = ({ module, courseId }) => {
                 </div>
                 <div className={styles.formBlock}>
                     <label htmlFor="description">Description</label>
-                    <textarea id="description" name="description" value={formData.description} onChange={handleInputChange} />
+                    <textarea id="description" name="description" value={formData.description} onChange={handleInputChange} className={styles.moduleTextarea} />
                     {errors.description && <span className={styles.errorMessage}>{errors.description}</span>}
                 </div>
                 <div className={styles.formBlock}>
-                    <label htmlFor="file">Add Files</label>
-                    <input id="file" type="file" multiple onChange={handleFileChange} />
+                    <label htmlFor="file" className={styles.customFileUpload}>Add Files</label>
+                    <input
+                        id="file"
+                        type="file"
+                        multiple
+                        onChange={handleFileChange}
+                        className={styles.hiddenFileInput}  // デフォルトのファイル入力を非表示
+                    />
                     <ul className={styles.fileList}>
                         {selectedFiles.map((file, index) => {
                             const filePath = file.file || (file.name && URL.createObjectURL(file)) || '';
@@ -113,8 +124,12 @@ const ModuleForm = ({ module, courseId }) => {
 
                             return (
                                 <li key={file.id || index} className={styles.fileItem}>
-                                    {fileName}
-                                    <button type="button" onClick={() => handleRemoveFile(file)}>Remove</button>
+                                    <span className={styles.fileName}>{fileName}</span>
+                                    <i
+                                        className="fa-solid fa-circle-xmark"
+                                        onClick={() => handleRemoveFile(file)}
+                                        style={{ cursor: 'pointer', color: 'red', margin: '5px', fontSize: '22px' }}
+                                    ></i>
                                 </li>
                             );
                         })}

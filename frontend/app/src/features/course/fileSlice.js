@@ -7,7 +7,7 @@ export const fetchFiles = createAsyncThunk(
     async (moduleId, { rejectWithValue }) => {
         try {
             const response = await apiClient.get(`/courses/files/?module=${moduleId}`);
-            return response.data;
+            return response.data; // ファイルデータだけを返す
         } catch (error) {
             return rejectWithValue(error.message);
         }
@@ -52,7 +52,7 @@ export const batchUpdateFiles = createAsyncThunk(
 const fileSlice = createSlice({
     name: 'file',
     initialState: {
-        files: [],
+        files: {}, // モジュール ID をキーにしてファイルを保存
         loading: false,
         error: null,
     },
@@ -64,19 +64,19 @@ const fileSlice = createSlice({
             })
             .addCase(fetchFiles.fulfilled, (state, action) => {
                 state.loading = false;
-                state.files = action.payload;
+                const moduleId = action.meta.arg; // fetchFiles に渡した moduleId を取得
+                state.files[moduleId] = action.payload; // モジュール ID ごとに保存
             })
             .addCase(fetchFiles.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
             })
-            // バッチアップデート後、ファイル一覧を再取得
             .addCase(batchUpdateFiles.pending, (state) => {
                 state.loading = true;
             })
             .addCase(batchUpdateFiles.fulfilled, (state) => {
                 state.loading = false;
-                state.error = null;  // エラーをクリア
+                state.error = null; // エラーをクリア
             })
             .addCase(batchUpdateFiles.rejected, (state, action) => {
                 state.loading = false;

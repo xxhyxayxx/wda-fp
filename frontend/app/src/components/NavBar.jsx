@@ -8,7 +8,7 @@ const NavBar = () => {
     const { userInfo } = useSelector((state) => state.user);
 
     // userInfoの内容をコンソールに出力
-    console.log('NavBar - userInfo:', userInfo);
+    //console.log('NavBar - userInfo:', userInfo);
 
     return (
         <nav className={styles.navMenu}>

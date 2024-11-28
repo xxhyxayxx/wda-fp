@@ -1,0 +1,107 @@
+.formContainer{
+    background-color: #fff;
+    width: 680px;
+    margin: 80px auto;
+    border-radius: 12px;
+    padding: 40px;
+}
+
+.moduleFormTitle{
+    font-size: 2rem;
+    text-align: center;
+    font-family: "Quicksand", sans-serif;
+    color: var(--purple);
+    margin: 0 0 20px 0;
+}
+
+.formBox{
+    margin: 0 auto;
+    width: 380px;
+}
+
+.submitBtn{
+    display: block;
+    margin: 20px auto 0;
+    width: 200px;
+    border: none;
+    font-size: 1.1rem;
+    padding: 12px 0;
+    border-radius: 4px;
+    background-color: var(--purple);
+    color: #fff;
+    letter-spacing: 0.04rem;
+}
+
+button:hover {
+    opacity: 0.8;
+}
+
+.formBlock{
+    display: flex;
+    margin: 0 0 16px;
+    flex-direction: column;
+}
+
+.formBlock input,textarea{
+    width: 360px;
+}
+
+.formBlock label{
+    margin:  0 0 8px;
+    letter-spacing: 0.02rem;
+}
+
+.formBlock textarea{
+    padding: 8px 8px;
+    border: 2px solid var(--lavender);
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+.formBlockCheck{
+    display: flex;
+    justify-content: center;
+}
+
+.formBlockCheck label{
+    width: 70px
+}
+
+.formBlockCheck input{
+    width: 20px;
+}
+
+.moduleTextarea{
+    height: 180px;
+}
+
+.customFileUpload {
+    display: inline-block;
+    padding: 8px 16px;
+    color: #fff;
+    background-color: var(--purple);
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    font-weight: normal;
+}
+
+.hiddenFileInput {
+    display: none;
+}
+
+.fileName {
+    margin-left: 8px;
+    color: #555;
+    font-size: 0.9em;
+}
+
+.fileName {
+    max-width: 200px;        /* ファイル名の最大幅を設定 */
+    white-space: nowrap;     /* 改行を防ぐ */
+    overflow: hidden;        /* 溢れた部分を隠す */
+    text-overflow: ellipsis; /* 省略記号を表示 */
+    display: inline-block;   /* インライン要素として表示 */
+    vertical-align: middle;  /* アイコンと垂直位置を揃える */
+}
+

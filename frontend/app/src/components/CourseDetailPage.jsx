@@ -43,18 +43,32 @@ const CourseDetailPage = () => {
     // modules が初期ロードされたら、一度だけファイルをフェッチする
     useEffect(() => {
         if (modules.length > 0 && !hasFetchedFiles) {
-            // 関連するモジュールのみファイルをフェッチ
-            const filteredModuleIds = modules
-                .filter(module => module.course === parseInt(courseId))
-                .map(module => module.id);
-
-            filteredModuleIds.forEach(moduleId => {
-                dispatch(fetchFiles(moduleId));
-            });
-
-            setHasFetchedFiles(true); // 一度フェッチしたらフラグを更新
+            const fetchAllFiles = async () => {
+                const filteredModuleIds = modules
+                    .filter(module => module.course === parseInt(courseId))
+                    .map(module => module.id);
+    
+                try {
+                    for (const moduleId of filteredModuleIds) {
+                        await dispatch(fetchFiles(moduleId)).unwrap();
+                    }
+    
+                    // Redux の `files` ステートを確認
+                    console.log("Redux state - files after fetching:", files);
+    
+                    setHasFetchedFiles(true);
+                } catch (error) {
+                    console.error("Error fetching files:", error);
+                }
+            };
+    
+            fetchAllFiles();
         }
     }, [modules, hasFetchedFiles, dispatch, courseId]);
+
+    useEffect(() => {
+        console.log("Files state:", files);
+    }, [files]);
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -77,7 +91,6 @@ const CourseDetailPage = () => {
     const toggleCourseMenu = () => {
         setCourseMenuOpen(!courseMenuOpen);
     };
-
 
     const toggleModuleMenu = (moduleId) => {
         setMenuOpen(menuOpen === moduleId ? null : moduleId);
@@ -111,7 +124,7 @@ const CourseDetailPage = () => {
     };
 
     const handleEditModule = (moduleId) => {
-        const moduleFiles = files.filter(file => file.module === moduleId); // モジュールに関連するファイルのみ
+        const moduleFiles = files[moduleId] || []; // モジュールに関連するファイルのみ
         navigate(`/edit-module/${moduleId}`, { state: { moduleFiles } }); // ファイルをstateで渡す
         setMenuOpen(null);
     };
@@ -158,7 +171,8 @@ const CourseDetailPage = () => {
                         <div className={styles.modulesSection}>
                         {filteredModules.length > 0 ? (
                                 filteredModules.map((module) => {
-                                    const moduleFiles = files.filter(file => file.module === module.id);
+                                    const moduleFiles = files[module.id] || [];
+                                    console.log(`Module ID: ${module.id}, Files:`, moduleFiles); // ここで挿入
                                     const isDrawerOpen = fileDrawerOpen[module.id];
                                     return (
                                         <div key={module.id} className={styles.moduleCard}>
