@@ -59,3 +59,9 @@ coverage/
 
 # Optional directories
 *.expo
+
+# Media files
+media/
+profile_images/
+course_files/
+

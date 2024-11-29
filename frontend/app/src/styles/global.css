@@ -29,7 +29,7 @@ body{
     padding: 0;
 }
 
-div,nav, h1{
+div,nav, h1, p{
     padding: 0;
     margin: 0;
 }

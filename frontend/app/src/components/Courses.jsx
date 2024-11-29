@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { fetchCourses, deleteCourse } from '../features/course/courseSlice';
 import styles from './styles/Courses.module.css';
 import NavBar from './NavBar';
@@ -99,7 +99,11 @@ const Courses = () => {
                             <tbody>
                                 {courses.map((course) => (
                                     <tr key={course.id} className={styles.courseRow}>
-                                        <td>{course.title}</td>
+                                        <td>
+                                            <Link to={`/courses/${course.id}`} className={styles.courseLink}>
+                                                {course.title}
+                                            </Link>
+                                        </td>
                                         <td>{course.category}</td>
                                         <td>
                                             {course.is_published ? (

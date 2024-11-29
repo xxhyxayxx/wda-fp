@@ -13,8 +13,11 @@ import './styles/global.css';
 import ProfileUpdateForm from './components/ProfileUpdateForm';
 import ChangePasswordForm from './components/ChangePasswordForm';
 import Courses from './components/Courses';
-import CreateCoursePage from './components/CreateCoursePage'; // CreateCoursePageに変更
+import CreateCoursePage from './components/CreateCoursePage';
 import EditCoursePage from './components/EditCoursePage';
+import CourseDetailPage from './components/CourseDetailPage';
+import CreateModulePage from './components/CreateModulePage'; // 新規モジュール作成ページをインポート
+import EditModulePage from './components/EditModulePage';     // モジュール編集ページをインポート
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 createRoot(document.getElementById('root')).render(
@@ -68,7 +71,7 @@ createRoot(document.getElementById('root')).render(
             path="/create-course"
             element={
               <TeacherRoute>
-                <CreateCoursePage /> {/* ここをCreateCoursePageに変更 */}
+                <CreateCoursePage />
               </TeacherRoute>
             }
           />
@@ -77,6 +80,32 @@ createRoot(document.getElementById('root')).render(
             element={
               <TeacherRoute>
                 <EditCoursePage />
+              </TeacherRoute>
+            }
+          />
+          <Route
+            path="/courses/:courseId"
+            element={
+              <TeacherRoute>
+                <CourseDetailPage />
+              </TeacherRoute>
+            }
+          />
+          {/* 新しいモジュール作成ページ */}
+          <Route
+            path="/create-module"
+            element={
+              <TeacherRoute>
+                <CreateModulePage />
+              </TeacherRoute>
+            }
+          />
+          {/* モジュール編集ページ */}
+          <Route
+            path="/edit-module/:moduleId"
+            element={
+              <TeacherRoute>
+                <EditModulePage />
               </TeacherRoute>
             }
           />
