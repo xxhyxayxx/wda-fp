@@ -3,7 +3,7 @@ from rest_framework.test import APITestCase
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from accounts.models import CustomUser
-from courses.models import Course, Module, File
+from courses.models import Course, Module, File, Enrollment, ModuleProgress
 import hashlib
 
 def get_file_hash(file):
@@ -338,3 +338,91 @@ class FileListAPIViewTest(FileBatchUpdateTest):
         response = self.client.get(self.file_list_url, {'module': 999})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data, [])  # ファイルがない場合は空のリストが返される
+
+class EnrollmentAPIViewTest(APITestCase):
+
+    def setUp(self):
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            user_type='teacher'
+        )
+        self.student = CustomUser.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            description='This is a test course.',
+            created_by=self.teacher
+        )
+        self.enroll_url = reverse('course-enroll', args=[self.course.id])
+
+    def test_student_can_enroll(self):
+        self.client.force_authenticate(user=self.student)
+        response = self.client.post(self.enroll_url)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Enrollment.objects.count(), 1)
+        self.assertEqual(Enrollment.objects.first().student, self.student)
+
+    def test_teacher_cannot_enroll(self):
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.post(self.enroll_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_student_cannot_enroll_twice(self):
+        Enrollment.objects.create(student=self.student, course=self.course)
+
+        self.client.force_authenticate(user=self.student)
+        response = self.client.post(self.enroll_url)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Enrollment.objects.count(), 1)
+
+class CompleteModuleAPIViewTest(APITestCase):
+
+    def setUp(self):
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            user_type='teacher'
+        )
+        self.student = CustomUser.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            description='This is a test course.',
+            created_by=self.teacher
+        )
+        self.module = Module.objects.create(
+            course=self.course,
+            title='Test Module',
+            created_by=self.teacher
+        )
+        self.complete_url = reverse('module-complete', args=[self.module.id])
+
+    def test_student_can_complete_module(self):
+        enrollment = Enrollment.objects.create(student=self.student, course=self.course)
+
+        self.client.force_authenticate(user=self.student)
+        response = self.client.post(self.complete_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(ModuleProgress.objects.count(), 1)
+
+        progress = ModuleProgress.objects.first()
+        self.assertTrue(progress.is_completed)
+        self.assertIsNotNone(progress.completed_at)
+
+    def test_non_enrolled_student_cannot_complete_module(self):
+        self.client.force_authenticate(user=self.student)
+        response = self.client.post(self.complete_url)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(ModuleProgress.objects.count(), 0)

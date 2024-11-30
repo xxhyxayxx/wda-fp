@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     CourseCreateAPIView, CourseUpdateAPIView, CourseDeleteAPIView, CourseListAPIView,
     ModuleCreateAPIView, ModuleUpdateAPIView, ModuleDeleteAPIView, ModuleListAPIView,
-    FileListAPIView, FileBatchUpdateAPIView
+    FileListAPIView, FileBatchUpdateAPIView, EnrollmentView, CompleteModuleView
 )
 
 urlpatterns = [
@@ -21,4 +21,10 @@ urlpatterns = [
     # ファイルエンドポイント
     path('files/', FileListAPIView.as_view(), name='file-list'),  # ファイル一覧
     path('files/batch-update/', FileBatchUpdateAPIView.as_view(), name='file-batch-update'),  # ファイルの一括作成・更新・削除
+    
+    # Enrollment API
+    path('courses/<int:course_id>/enroll/', EnrollmentView.as_view(), name='course-enroll'),  # コース登録
+
+    # Module Completion API
+    path('modules/<int:module_id>/complete/', CompleteModuleView.as_view(), name='module-complete'),  # モジュール完了
 ]

@@ -1,6 +1,6 @@
 from rest_framework import generics, permissions, status
-from .models import Course, Module, File
-from .serializers import CourseSerializer, ModuleSerializer, FileSerializer
+from .models import Course, Module, File, Module, ModuleProgress, Enrollment
+from .serializers import CourseSerializer, ModuleSerializer, FileSerializer, ModuleProgressSerializer, EnrollmentSerializer
 from .permissions import IsTeacher
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,6 +8,8 @@ from django.db import transaction
 from rest_framework.exceptions import ValidationError
 import hashlib
 import json
+from django.utils.timezone import now
+from django.shortcuts import get_object_or_404
 
 
 # コース作成、更新、削除、一覧ビュー
@@ -132,3 +134,53 @@ class FileListAPIView(generics.ListAPIView):
         if module_id:
             return File.objects.filter(module_id=module_id)
         return File.objects.all()
+
+class EnrollmentView(APIView):
+    """
+    生徒がコースに登録するビュー
+    """
+    def post(self, request, course_id):
+        # 指定されたコースを取得
+        course = get_object_or_404(Course, id=course_id)
+        student = request.user
+
+        # ユーザーが生徒であるか確認
+        if student.user_type != 'student':
+            return Response({'error': 'Only students can enroll in courses'}, status=status.HTTP_403_FORBIDDEN)
+
+        # 既に登録済みかを確認
+        if Enrollment.objects.filter(student=student, course=course).exists():
+            return Response({'error': 'You are already enrolled in this course'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Enrollmentを作成
+        enrollment = Enrollment.objects.create(student=student, course=course)
+        serializer = EnrollmentSerializer(enrollment)
+
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class CompleteModuleView(APIView):
+    def post(self, request, module_id):
+        module = get_object_or_404(Module, id=module_id)
+        enrollment = get_object_or_404(Enrollment, student=request.user, course=module.course)
+
+        progress, created = ModuleProgress.objects.get_or_create(
+            enrollment=enrollment,
+            module=module
+        )
+        progress.is_completed = True
+        progress.completed_at = now()
+        progress.save()
+
+        serializer = ModuleProgressSerializer(progress)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+class CourseProgressView(APIView):
+    def get(self, request, course_id):
+        enrollment = get_object_or_404(Enrollment, student=request.user, course_id=course_id)
+        module_progresses = ModuleProgress.objects.filter(enrollment=enrollment)
+        progress_data = ModuleProgressSerializer(module_progresses, many=True).data
+
+        return Response({
+            'course_progress': enrollment.progress,
+            'module_progress': progress_data
+        })

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Course, Module, File
+from .models import Course, Module, File, Enrollment, ModuleProgress
 from accounts.models import CustomUser  # CustomUserをインポート
 from rest_framework.exceptions import ValidationError
 
@@ -90,3 +90,13 @@ class FileSerializer(serializers.ModelSerializer):
                 raise ValidationError(f"File update validation failed for {validated_data['file'].name}")
 
         return files
+
+class EnrollmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Enrollment
+        fields = ['id', 'student', 'course', 'status', 'progress', 'block_reason', 'enrolled_at', 'completed_at']
+
+class ModuleProgressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ModuleProgress
+        fields = ['id', 'enrollment', 'module', 'is_completed', 'completed_at']

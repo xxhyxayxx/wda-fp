@@ -1,7 +1,7 @@
 from django.test import TestCase
 from accounts.models import CustomUser
-from courses.models import Course, Module, File
-from courses.serializers import CourseSerializer, ModuleSerializer, FileSerializer
+from courses.models import Course, Module, File, Enrollment, Course, ModuleProgress
+from courses.serializers import CourseSerializer, ModuleSerializer, FileSerializer, EnrollmentSerializer, ModuleProgressSerializer
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIRequestFactory
 from rest_framework.exceptions import ValidationError
@@ -181,3 +181,73 @@ class FileSerializerTest(TestCase):
 
         self.assertFalse(file_serializer.is_valid())  # バリデーションが失敗することを確認
         self.assertIn('file', file_serializer.errors)  # エラーメッセージが含まれていることを確認
+
+class EnrollmentSerializerTest(TestCase):
+    def setUp(self):
+        # 必要なデータを作成
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            user_type='teacher'
+        )
+        self.student = CustomUser.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            created_by=self.teacher
+        )
+        self.enrollment = Enrollment.objects.create(
+            student=self.student,
+            course=self.course
+        )
+
+    def test_serialization(self):
+        serializer = EnrollmentSerializer(self.enrollment)
+        data = serializer.data
+        self.assertEqual(data['student'], self.student.id)
+        self.assertEqual(data['course'], self.course.id)
+        self.assertEqual(data['status'], 'ENROLLED')
+
+class ModuleProgressSerializerTest(TestCase):
+    def setUp(self):
+        # 必要なデータを作成
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            user_type='teacher'
+        )
+        self.student = CustomUser.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            created_by=self.teacher
+        )
+        self.module = Module.objects.create(
+            course=self.course,
+            title='Test Module',
+            created_by=self.teacher
+        )
+        # Enrollmentを作成
+        self.enrollment = Enrollment.objects.create(
+            student=self.student,
+            course=self.course
+        )
+        # ModuleProgressを作成
+        self.progress = ModuleProgress.objects.create(
+            enrollment=self.enrollment,
+            module=self.module,
+            is_completed=True
+        )
+
+    def test_serialization(self):
+        serializer = ModuleProgressSerializer(self.progress)
+        data = serializer.data
+        self.assertEqual(data['enrollment'], self.enrollment.id)
+        self.assertEqual(data['module'], self.module.id)
+        self.assertTrue(data['is_completed'])
