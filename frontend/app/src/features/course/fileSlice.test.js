@@ -26,23 +26,23 @@ describe('fileSlice', () => {
 
     test('fetchFiles - fulfilled', async () => {
         const mockData = [{ id: 1, title: 'Test File' }];
-        apiClient.get.mockResolvedValue({ data: mockData });
+        apiClient.get.mockResolvedValueOnce({ data: mockData });
 
-        await store.dispatch(fetchFiles(1));  // モジュールIDを1としてテスト
+        await store.dispatch(fetchFiles(1)); // モジュールIDを1としてテスト
         const state = store.getState().file;
 
-        expect(state.files).toEqual(mockData);
+        expect(state.files[1]).toEqual(mockData); // モジュールIDをキーにデータが格納されているか確認
         expect(state.loading).toBe(false);
         expect(state.error).toBeNull();
     });
 
     test('fetchFiles - rejected', async () => {
-        apiClient.get.mockRejectedValue({ message: 'Error fetching files' });
+        apiClient.get.mockRejectedValueOnce({ message: 'Error fetching files' });
 
         await store.dispatch(fetchFiles(1));
         const state = store.getState().file;
 
-        expect(state.files).toEqual([]);
+        expect(state.files[1]).toBeUndefined(); // モジュールIDがキーに設定されていないことを確認
         expect(state.loading).toBe(false);
         expect(state.error).toBe('Error fetching files');
     });
@@ -65,8 +65,10 @@ describe('fileSlice', () => {
             deleted: filesToDelete,
         };
 
-        apiClient.post.mockResolvedValue({ data: mockResponseData });
-        apiClient.get.mockResolvedValue({ data: [...mockResponseData.created, ...mockResponseData.updated] });
+        const mockUpdatedFiles = [...mockResponseData.created, ...mockResponseData.updated];
+
+        apiClient.post.mockResolvedValueOnce({ data: mockResponseData });
+        apiClient.get.mockResolvedValueOnce({ data: mockUpdatedFiles });
 
         await store.dispatch(batchUpdateFiles({
             moduleId,
@@ -76,9 +78,9 @@ describe('fileSlice', () => {
         }));
 
         const state = store.getState().file;
-        const expectedFiles = [...mockResponseData.created, ...mockResponseData.updated];
 
-        expect(state.files).toEqual(expectedFiles);  // 一覧取得によるファイル更新を確認
+        expect(state.files[moduleId]).toEqual(mockUpdatedFiles); // 更新後のファイルが正しく設定されているか確認
+        expect(apiClient.get).toHaveBeenCalledWith(`/courses/files/?module=${moduleId}`); // fetchFiles が呼ばれたか確認
         expect(state.error).toBeNull();
     });
 });
