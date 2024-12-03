@@ -92,6 +92,8 @@ class FileSerializer(serializers.ModelSerializer):
         return files
 
 class EnrollmentSerializer(serializers.ModelSerializer):
+    course = CourseSerializer()  # ネストされたコースデータ
+
     class Meta:
         model = Enrollment
         fields = ['id', 'student', 'course', 'status', 'progress', 'block_reason', 'enrolled_at', 'completed_at']

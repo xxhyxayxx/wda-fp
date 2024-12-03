@@ -9,6 +9,7 @@ import TeacherHome from './components/TeacherHome';
 import { store } from './store';
 import PrivateRoute from './routes/PrivateRoute';
 import TeacherRoute from './routes/TeacherRoute';
+import StudentRoute from './routes/StudentRoute';
 import './styles/global.css';
 import ProfileUpdateForm from './components/ProfileUpdateForm';
 import ChangePasswordForm from './components/ChangePasswordForm';
@@ -18,6 +19,7 @@ import EditCoursePage from './components/EditCoursePage';
 import CourseDetailPage from './components/CourseDetailPage';
 import CreateModulePage from './components/CreateModulePage'; // 新規モジュール作成ページをインポート
 import EditModulePage from './components/EditModulePage';     // モジュール編集ページをインポート
+import StudentCourses from './components/StudentCourses';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 createRoot(document.getElementById('root')).render(
@@ -107,6 +109,14 @@ createRoot(document.getElementById('root')).render(
               <TeacherRoute>
                 <EditModulePage />
               </TeacherRoute>
+            }
+          />
+          <Route
+            path="/student-courses"
+            element={
+              <StudentRoute>
+                <StudentCourses />
+              </StudentRoute>
             }
           />
         </Routes>

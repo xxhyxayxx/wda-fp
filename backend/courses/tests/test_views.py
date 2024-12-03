@@ -426,3 +426,65 @@ class CompleteModuleAPIViewTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(ModuleProgress.objects.count(), 0)
+
+class EnrolledCoursesAPIViewTest(APITestCase):
+    def setUp(self):
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            user_type='teacher'
+        )
+        self.student = CustomUser.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.other_student = CustomUser.objects.create_user(
+            email='other_student@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.course1 = Course.objects.create(
+            title='Course 1',
+            description='Description for course 1',
+            created_by=self.teacher
+        )
+        self.course2 = Course.objects.create(
+            title='Course 2',
+            description='Description for course 2',
+            created_by=self.teacher
+        )
+        # 学生をそれぞれのコースに登録
+        Enrollment.objects.create(student=self.student, course=self.course1)
+        Enrollment.objects.create(student=self.student, course=self.course2)
+        Enrollment.objects.create(student=self.other_student, course=self.course2)
+
+        self.enrollments_url = reverse('enrollment-list')
+
+    def test_student_can_get_enrolled_courses(self):
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get(self.enrollments_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)  # studentは2つのコースに登録されている
+        enrolled_course_titles = [enrollment['course']['title'] for enrollment in response.data]
+        self.assertIn('Course 1', enrolled_course_titles)
+        self.assertIn('Course 2', enrolled_course_titles)
+
+    def test_teacher_cannot_get_enrolled_courses(self):
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.get(self.enrollments_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_unauthenticated_user_cannot_get_enrolled_courses(self):
+        response = self.client.get(self.enrollments_url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_student_with_no_enrollments_gets_empty_list(self):
+        self.client.force_authenticate(user=self.other_student)
+        response = self.client.get(self.enrollments_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)  # other_studentは1つのコースに登録されている

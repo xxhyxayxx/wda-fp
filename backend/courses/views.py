@@ -10,7 +10,7 @@ import hashlib
 import json
 from django.utils.timezone import now
 from django.shortcuts import get_object_or_404
-
+from rest_framework.permissions import IsAuthenticated
 
 # コース作成、更新、削除、一覧ビュー
 
@@ -184,3 +184,19 @@ class CourseProgressView(APIView):
             'course_progress': enrollment.progress,
             'module_progress': progress_data
         })
+
+class EnrolledCoursesAPIView(APIView):
+    """
+    現在のユーザーが登録済みのコース一覧を取得するビュー
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # ユーザーが生徒であるか確認
+        if request.user.user_type != 'student':
+            return Response({'error': 'Only students can access this view'}, status=status.HTTP_403_FORBIDDEN)
+
+        # ログイン中の生徒の登録情報を取得
+        enrollments = Enrollment.objects.filter(student=request.user)
+        serializer = EnrollmentSerializer(enrollments, many=True)
+        return Response(serializer.data)

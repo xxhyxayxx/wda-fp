@@ -7,22 +7,29 @@ import LogoutButton from './LogoutButton';
 const NavBar = () => {
     const { userInfo } = useSelector((state) => state.user);
 
-    // userInfoの内容をコンソールに出力
-    //console.log('NavBar - userInfo:', userInfo);
-
     return (
         <nav className={styles.navMenu}>
             <Link to="/">
                 <h1 className={styles.logo}>E-Learning</h1>
             </Link>
             <ul className={styles.navLinks}>
-                {userInfo?.user_type === 'teacher' && ( // user_type が 'teacher' の場合のみ表示
+                {/* Teacher用リンク */}
+                {userInfo?.user_type === 'teacher' && (
                     <li>
                         <Link to="/courses" className={styles.navLink}>
                             Courses
                         </Link>
                     </li>
                 )}
+                {/* Student用リンク */}
+                {userInfo?.user_type === 'student' && (
+                    <li>
+                        <Link to="/student-courses" className={styles.navLink}>
+                            Courses
+                        </Link>
+                    </li>
+                )}
+                {/* プロフィールリンク */}
                 <li>
                     <Link to="/account" className={styles.profileLink}>
                         {userInfo?.profile_image && (
@@ -34,6 +41,7 @@ const NavBar = () => {
                         )}
                     </Link>
                 </li>
+                {/* ログアウトボタン */}
                 <li>
                     <LogoutButton />
                 </li>
