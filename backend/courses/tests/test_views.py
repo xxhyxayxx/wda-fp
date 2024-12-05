@@ -5,6 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from accounts.models import CustomUser
 from courses.models import Course, Module, File, Enrollment, ModuleProgress
 import hashlib
+from django.utils.timezone import now
 
 def get_file_hash(file):
     """ファイルのハッシュ値を取得"""
@@ -488,3 +489,110 @@ class EnrolledCoursesAPIViewTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)  # other_studentは1つのコースに登録されている
+
+class CourseProgressAPIViewTest(APITestCase):
+
+    def setUp(self):
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            user_type='teacher'
+        )
+        self.student = CustomUser.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            description='This is a test course.',
+            created_by=self.teacher
+        )
+        self.module1 = Module.objects.create(
+            course=self.course,
+            title='Module 1',
+            created_by=self.teacher
+        )
+        self.module2 = Module.objects.create(
+            course=self.course,
+            title='Module 2',
+            created_by=self.teacher
+        )
+        self.module3 = Module.objects.create(
+            course=self.course,
+            title='Module 3',
+            created_by=self.teacher
+        )
+        self.enrollment = Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+            progress=0.00
+        )
+        self.progress_url = reverse('course-progress', args=[self.course.id])
+
+    def test_course_progress_initially_zero(self):
+        """登録直後、進捗率が0%であることを確認"""
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get(self.progress_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['course_progress'], 0.0)  # 初期進捗率
+        self.assertEqual(len(response.data['module_progress']), 0)  # モジュール進捗が空
+
+    def test_course_progress_updates_correctly(self):
+        """モジュールを完了すると進捗率が更新されることを確認"""
+        # 最初のモジュールを完了
+        ModuleProgress.objects.create(
+            enrollment=self.enrollment,
+            module=self.module1,
+            is_completed=True,
+            completed_at=now()
+        )
+
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get(self.progress_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertAlmostEqual(response.data['course_progress'], 33.33, places=2)  # float型で比較
+        self.assertEqual(len(response.data['module_progress']), 1)  # 完了したモジュールが1つ
+
+    def test_course_progress_full_completion(self):
+        """全モジュールを完了した場合、進捗率が100%になることを確認"""
+        ModuleProgress.objects.create(
+            enrollment=self.enrollment,
+            module=self.module1,
+            is_completed=True,
+            completed_at=now()
+        )
+        ModuleProgress.objects.create(
+            enrollment=self.enrollment,
+            module=self.module2,
+            is_completed=True,
+            completed_at=now()
+        )
+        ModuleProgress.objects.create(
+            enrollment=self.enrollment,
+            module=self.module3,
+            is_completed=True,
+            completed_at=now()
+        )
+
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get(self.progress_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertAlmostEqual(response.data['course_progress'], 100.0, places=2)  # float型で比較
+        self.assertEqual(len(response.data['module_progress']), 3)  # 全モジュール進捗が含まれる
+        
+    def test_unauthorized_access_to_course_progress(self):
+        """認証されていないユーザーが進捗を取得できないことを確認"""
+        response = self.client.get(self.progress_url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_teacher_cannot_access_course_progress(self):
+        """教師が進捗を取得できないことを確認"""
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.get(self.progress_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

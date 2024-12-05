@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Course, Module, File
+from .models import Course, Module, File, Enrollment, ModuleProgress
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
@@ -25,3 +25,25 @@ class FileAdmin(admin.ModelAdmin):
     def file_name(self, obj):
         return obj.file.name  # ファイルの名前を返す
     file_name.short_description = 'File Name'  # 管理画面に表示されるカラム名を設定
+
+@admin.register(Enrollment)
+class EnrollmentAdmin(admin.ModelAdmin):
+    list_display = ('student', 'course', 'status', 'progress', 'enrolled_at', 'completed_at')
+    list_filter = ('status', 'enrolled_at', 'completed_at', 'course')
+    search_fields = ('student__name', 'course__title', 'status')
+    ordering = ('-enrolled_at',)
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.select_related('student', 'course')
+
+@admin.register(ModuleProgress)
+class ModuleProgressAdmin(admin.ModelAdmin):
+    list_display = ('enrollment', 'module', 'is_completed', 'completed_at')
+    list_filter = ('is_completed', 'completed_at', 'module')
+    search_fields = ('enrollment__student__name', 'module__title')
+    ordering = ('-completed_at',)
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        return queryset.select_related('enrollment', 'module')

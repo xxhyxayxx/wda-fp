@@ -20,7 +20,9 @@ import CourseDetailPage from './components/CourseDetailPage';
 import CreateModulePage from './components/CreateModulePage'; // 新規モジュール作成ページをインポート
 import EditModulePage from './components/EditModulePage';     // モジュール編集ページをインポート
 import StudentCourses from './components/StudentCourses';
+import StudentCourseDetailPage from './components/StudentCourseDetailPage'; // 新しいコンポーネントをインポート
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import 'normalize.css';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -116,6 +118,14 @@ createRoot(document.getElementById('root')).render(
             element={
               <StudentRoute>
                 <StudentCourses />
+              </StudentRoute>
+            }
+          />
+          <Route
+            path="/student-courses/:courseId"
+            element={
+              <StudentRoute>
+                <StudentCourseDetailPage />
               </StudentRoute>
             }
           />

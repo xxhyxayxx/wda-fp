@@ -93,12 +93,27 @@ class FileSerializer(serializers.ModelSerializer):
 
 class EnrollmentSerializer(serializers.ModelSerializer):
     course = CourseSerializer()  # ネストされたコースデータ
+    progress = serializers.SerializerMethodField()  # カスタムフィールドで進捗率をフォーマット
 
     class Meta:
         model = Enrollment
         fields = ['id', 'student', 'course', 'status', 'progress', 'block_reason', 'enrolled_at', 'completed_at']
 
+    def get_progress(self, obj):
+        # Decimal から整数値の進捗率を計算
+        return int(obj.progress) if obj.progress is not None else 0
+
 class ModuleProgressSerializer(serializers.ModelSerializer):
+    module = serializers.SerializerMethodField()  # モジュール情報をネスト
+
     class Meta:
         model = ModuleProgress
         fields = ['id', 'enrollment', 'module', 'is_completed', 'completed_at']
+
+    def get_module(self, obj):
+        # 必要なモジュール情報を取得
+        return {
+            'id': obj.module.id,
+            'title': obj.module.title,
+            'description': obj.module.description,
+        }

@@ -201,14 +201,18 @@ class EnrollmentSerializerTest(TestCase):
         )
         self.enrollment = Enrollment.objects.create(
             student=self.student,
-            course=self.course
+            course=self.course,
+            progress=75.5
         )
 
     def test_serialization(self):
         serializer = EnrollmentSerializer(self.enrollment)
         data = serializer.data
+
+        # 各フィールドの検証
         self.assertEqual(data['student'], self.student.id)
-        self.assertEqual(data['course'], self.course.id)
+        self.assertEqual(data['course']['id'], self.course.id)  # ネストされたコースデータを確認
+        self.assertEqual(data['progress'], 75)  # 小数点以下を切り捨てて整数化されていることを確認
         self.assertEqual(data['status'], 'ENROLLED')
 
 class ModuleProgressSerializerTest(TestCase):
@@ -231,6 +235,7 @@ class ModuleProgressSerializerTest(TestCase):
         self.module = Module.objects.create(
             course=self.course,
             title='Test Module',
+            description='Module Description',
             created_by=self.teacher
         )
         # Enrollmentを作成
@@ -246,8 +251,15 @@ class ModuleProgressSerializerTest(TestCase):
         )
 
     def test_serialization(self):
+        # self.progress が正しく設定されていることを確認
         serializer = ModuleProgressSerializer(self.progress)
         data = serializer.data
+
+        # 各フィールドの検証
         self.assertEqual(data['enrollment'], self.enrollment.id)
-        self.assertEqual(data['module'], self.module.id)
         self.assertTrue(data['is_completed'])
+
+        # ネストされたモジュール情報の確認
+        self.assertEqual(data['module']['id'], self.module.id)  # モジュールの ID を確認
+        self.assertEqual(data['module']['title'], 'Test Module')  # モジュールのタイトルを確認
+        self.assertEqual(data['module']['description'], 'Module Description')  # モジュールの説明を確認

@@ -11,6 +11,7 @@ import json
 from django.utils.timezone import now
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
+from decimal import Decimal
 
 # コース作成、更新、削除、一覧ビュー
 
@@ -171,17 +172,44 @@ class CompleteModuleView(APIView):
         progress.completed_at = now()
         progress.save()
 
+        # コース全体の進捗率を更新
+        modules = Module.objects.filter(course=module.course)
+        module_progresses = ModuleProgress.objects.filter(enrollment=enrollment)
+        total_modules = modules.count()
+        completed_modules = module_progresses.filter(is_completed=True).count()
+        enrollment.progress = Decimal((completed_modules / total_modules) * 100) if total_modules > 0 else Decimal('0.00')
+        enrollment.save()
+
         serializer = ModuleProgressSerializer(progress)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class CourseProgressView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def get(self, request, course_id):
+        # 教師の場合は403を返す
+        if request.user.user_type == 'teacher':
+            return Response({'error': 'Teachers cannot access course progress'}, status=status.HTTP_403_FORBIDDEN)
+
+        # コース登録データを取得
         enrollment = get_object_or_404(Enrollment, student=request.user, course_id=course_id)
+        modules = Module.objects.filter(course_id=course_id)
         module_progresses = ModuleProgress.objects.filter(enrollment=enrollment)
+
+        # モジュール進捗の計算
+        total_modules = modules.count()
+        completed_modules = module_progresses.filter(is_completed=True).count()
+        progress = Decimal((completed_modules / total_modules) * 100) if total_modules > 0 else Decimal('0.00')
+
+        # 進捗率を更新
+        enrollment.progress = progress
+        enrollment.save()
+
+        # モジュール進捗データを取得
         progress_data = ModuleProgressSerializer(module_progresses, many=True).data
 
         return Response({
-            'course_progress': enrollment.progress,
+            'course_progress': float(progress),  # float型に変換して返す
             'module_progress': progress_data
         })
 
