@@ -239,10 +239,6 @@ class CourseStudentsAPIView(APIView):
         # コースの存在を確認
         course = get_object_or_404(Course, id=course_id)
 
-        # 教師のアクセスを制限する場合
-        if request.user.user_type == 'teacher':
-            return Response({"error": "Teachers cannot access this view"}, status=status.HTTP_403_FORBIDDEN)
-
         # コースに登録されている生徒を取得
         enrollments = Enrollment.objects.filter(course=course)
         students = [enrollment.student for enrollment in enrollments]
@@ -253,10 +249,9 @@ class CourseStudentsAPIView(APIView):
                 'id': student.id,
                 'name': student.name,
                 'email': student.email,
-                'profile_image': student.profile_image.url if student.profile_image else None,
+                'profile_image': request.build_absolute_uri(student.profile_image.url) if student.profile_image else None,
             }
             for student in students
         ]
 
-        # 学生がいない場合も空リストで返す
         return Response(student_data, status=status.HTTP_200_OK)

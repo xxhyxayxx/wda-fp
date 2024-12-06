@@ -103,3 +103,12 @@
 .moduleDescription{
     margin: 0 0 10px;
 }
+
+.studentImage {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%; /* 円形にする */
+    object-fit: cover; /* 画像が歪まないようにする */
+    border: 2px solid #ddd; /* 画像の周囲に境界線を追加（オプション） */
+    margin-right: 10px; /* 画像とテキストの間隔（オプション） */
+}

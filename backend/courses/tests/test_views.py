@@ -637,7 +637,7 @@ class CourseStudentsAPIViewTest(APITestCase):
 
     def test_get_students_in_course(self):
         """コースに登録されている学生を取得"""
-        self.client.force_authenticate(user=self.student1)
+        self.client.force_authenticate(user=self.teacher)  # 教師で認証
         response = self.client.get(self.course_students_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -659,18 +659,11 @@ class CourseStudentsAPIViewTest(APITestCase):
         )
         empty_course_students_url = reverse('course-students', args=[empty_course.id])
 
-        self.client.force_authenticate(user=self.student1)
+        self.client.force_authenticate(user=self.teacher)  # 教師で認証
         response = self.client.get(empty_course_students_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 0)  # 登録された学生がいない
-
-    def test_teacher_cannot_access_students(self):
-        """教師がコースに登録されている学生を取得できない"""
-        self.client.force_authenticate(user=self.teacher)
-        response = self.client.get(self.course_students_url)
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_unauthenticated_user_cannot_access_students(self):
         """認証されていないユーザーがコース学生を取得できない"""
