@@ -255,3 +255,37 @@ class CourseStudentsAPIView(APIView):
         ]
 
         return Response(student_data, status=status.HTTP_200_OK)
+
+class BlockStudentAPIView(APIView):
+    """
+    生徒をブロックまたはアンブロックするAPI
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, course_id, student_id):
+        # 現在のユーザーが教師であることを確認
+        if request.user.user_type != 'teacher':
+            return Response({'error': 'Only teachers can block or unblock students.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # コースと生徒の登録データを取得
+        enrollment = get_object_or_404(Enrollment, course_id=course_id, student_id=student_id)
+
+        # ブロック状態のトグル
+        if enrollment.status == 'BLOCKED':
+            # ブロック解除
+            enrollment.status = 'ENROLLED'
+            enrollment.block_reason = None  # 理由をクリア
+            message = 'Student unblocked successfully.'
+        else:
+            # ブロック
+            enrollment.status = 'BLOCKED'
+            enrollment.block_reason = request.data.get('reason', 'No reason provided')  # 理由を設定
+            message = 'Student blocked successfully.'
+
+        enrollment.save()
+
+        return Response({
+            'message': message,
+            'status': enrollment.status,
+            'block_reason': enrollment.block_reason
+        }, status=status.HTTP_200_OK)

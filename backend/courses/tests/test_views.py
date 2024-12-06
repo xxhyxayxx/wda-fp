@@ -670,3 +670,75 @@ class CourseStudentsAPIViewTest(APITestCase):
         response = self.client.get(self.course_students_url)
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+class BlockStudentAPIViewTest(APITestCase):
+    def setUp(self):
+        # テスト用の教師と学生を作成
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            name='Teacher User',
+            user_type='teacher'
+        )
+        self.student = CustomUser.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            name='Student User',
+            user_type='student'
+        )
+
+        # コースを作成
+        self.course = Course.objects.create(
+            title='Test Course',
+            description='This is a test course.',
+            category='Test Category',
+            is_published=True,
+            created_by=self.teacher
+        )
+
+        # 学生をコースに登録
+        self.enrollment = Enrollment.objects.create(student=self.student, course=self.course)
+
+        # APIエンドポイントURL
+        self.block_student_url = reverse('block-student', args=[self.course.id, self.student.id])
+
+    def test_teacher_can_block_student(self):
+        """教師が生徒をブロックできることを確認"""
+        self.client.force_authenticate(user=self.teacher)
+        data = {'reason': 'Disruptive behavior'}
+        response = self.client.post(self.block_student_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.enrollment.refresh_from_db()
+        self.assertEqual(self.enrollment.status, 'BLOCKED')  # ステータスがBLOCKEDに更新される
+        self.assertEqual(self.enrollment.block_reason, 'Disruptive behavior')  # ブロック理由が設定される
+        self.assertEqual(response.data['message'], 'Student blocked successfully.')
+
+    def test_teacher_can_unblock_student(self):
+        """教師が生徒をブロック解除できることを確認"""
+        # まず生徒をブロックする
+        self.enrollment.status = 'BLOCKED'
+        self.enrollment.block_reason = 'Disruptive behavior'
+        self.enrollment.save()
+
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.post(self.block_student_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.enrollment.refresh_from_db()
+        self.assertEqual(self.enrollment.status, 'ENROLLED')  # ステータスがENROLLEDに更新される
+        self.assertIsNone(self.enrollment.block_reason)  # ブロック理由がクリアされる
+        self.assertEqual(response.data['message'], 'Student unblocked successfully.')
+
+    def test_unauthenticated_user_cannot_block_or_unblock_student(self):
+        """認証されていないユーザーはアクセスできない"""
+        response = self.client.post(self.block_student_url, {'reason': 'Disruptive behavior'})
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_student_cannot_block_or_unblock(self):
+        """学生は他の学生をブロック/ブロック解除できない"""
+        self.client.force_authenticate(user=self.student)
+        response = self.client.post(self.block_student_url, {'reason': 'Disruptive behavior'})
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

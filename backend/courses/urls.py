@@ -3,7 +3,7 @@ from .views import (
     CourseCreateAPIView, CourseUpdateAPIView, CourseDeleteAPIView, CourseListAPIView,
     ModuleCreateAPIView, ModuleUpdateAPIView, ModuleDeleteAPIView, ModuleListAPIView,
     FileListAPIView, FileBatchUpdateAPIView, EnrollmentView, CompleteModuleView,
-    EnrolledCoursesAPIView, CourseProgressView, CourseStudentsAPIView  # Import the new view
+    EnrolledCoursesAPIView, CourseProgressView, CourseStudentsAPIView, BlockStudentAPIView  # Import the new view
 )
 
 urlpatterns = [
@@ -33,4 +33,6 @@ urlpatterns = [
 
     # Course Students API
     path('<int:course_id>/students/', CourseStudentsAPIView.as_view(), name='course-students'),  # コース参加学生一覧
+    
+    path('<int:course_id>/students/<int:student_id>/block/', BlockStudentAPIView.as_view(), name='block-student'),
 ]
