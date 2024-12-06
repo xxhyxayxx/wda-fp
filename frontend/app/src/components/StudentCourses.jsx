@@ -49,15 +49,18 @@ const StudentCourses = () => {
                             <p className={styles.courseCategory}>{course.category}</p>
                             <h2 className={styles.courseTitle}>{course.title}</h2>
                             <p className={styles.courseDescription}>{course.description}</p>
-                            
+
                             {/* Enrolled 済みかどうかを判定 */}
                             {enrolledCourseIds.includes(course.id) ? (
-                                <button
-                                    className={styles.enrollButton}
-                                    onClick={() => navigate(`/student-courses/${course.id}`)} // 詳細ページに遷移
-                                >
-                                    Go to Course
-                                </button>
+                                <>
+                                    <span className={styles.enrolledBadge}>Enrolled</span>
+                                    <button
+                                        className={styles.enrollButton}
+                                        onClick={() => navigate(`/student-courses/${course.id}`)}
+                                    >
+                                        Go to Course
+                                    </button>
+                                </>
                             ) : (
                                 <button
                                     className={styles.enrollButton}
@@ -66,6 +69,7 @@ const StudentCourses = () => {
                                     Enroll
                                 </button>
                             )}
+
                         </li>
                     ))}
                 </ul>

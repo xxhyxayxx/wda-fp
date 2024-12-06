@@ -123,7 +123,7 @@ describe('StudentCourses Component', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Enrolled')).toBeInTheDocument();
+      expect(screen.getByText('Enrolled')).toBeInTheDocument(); // Enrolled バッジの確認
     });
   });
 });

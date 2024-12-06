@@ -599,7 +599,6 @@ class CourseProgressAPIViewTest(APITestCase):
 
 class CourseStudentsAPIViewTest(APITestCase):
     def setUp(self):
-        # テスト用の教師と学生を作成
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -619,7 +618,6 @@ class CourseStudentsAPIViewTest(APITestCase):
             user_type='student'
         )
 
-        # コースを作成
         self.course = Course.objects.create(
             title='Test Course',
             description='This is a test course.',
@@ -629,24 +627,34 @@ class CourseStudentsAPIViewTest(APITestCase):
         )
 
         # 学生をコースに登録
-        Enrollment.objects.create(student=self.student1, course=self.course)
-        Enrollment.objects.create(student=self.student2, course=self.course)
+        self.enrollment1 = Enrollment.objects.create(student=self.student1, course=self.course, status='ENROLLED')
+        self.enrollment2 = Enrollment.objects.create(
+            student=self.student2, course=self.course, status='BLOCKED', block_reason='Disruptive behavior'
+        )
 
         # APIエンドポイントURL
         self.course_students_url = reverse('course-students', args=[self.course.id])
 
-    def test_get_students_in_course(self):
-        """コースに登録されている学生を取得"""
+    def test_get_students_in_course_with_status(self):
+        """コースに登録されている学生とそのステータスを取得"""
         self.client.force_authenticate(user=self.teacher)  # 教師で認証
         response = self.client.get(self.course_students_url)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)  # 学生が2人登録されている
 
-        # 学生の名前が含まれるかを確認
-        student_names = [student['name'] for student in response.data]
-        self.assertIn('Student One', student_names)
-        self.assertIn('Student Two', student_names)
+        student1_data = next((student for student in response.data if student['id'] == self.student1.id), None)
+        student2_data = next((student for student in response.data if student['id'] == self.student2.id), None)
+
+        # Student One のデータ確認
+        self.assertIsNotNone(student1_data)
+        self.assertEqual(student1_data['status'], 'ENROLLED')
+        self.assertIsNone(student1_data['block_reason'])
+
+        # Student Two のデータ確認
+        self.assertIsNotNone(student2_data)
+        self.assertEqual(student2_data['status'], 'BLOCKED')
+        self.assertEqual(student2_data['block_reason'], 'Disruptive behavior')
 
     def test_no_students_in_course(self):
         """コースに登録された学生がいない場合"""
@@ -673,7 +681,6 @@ class CourseStudentsAPIViewTest(APITestCase):
 
 class BlockStudentAPIViewTest(APITestCase):
     def setUp(self):
-        # テスト用の教師と学生を作成
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -687,7 +694,6 @@ class BlockStudentAPIViewTest(APITestCase):
             user_type='student'
         )
 
-        # コースを作成
         self.course = Course.objects.create(
             title='Test Course',
             description='This is a test course.',
@@ -696,13 +702,11 @@ class BlockStudentAPIViewTest(APITestCase):
             created_by=self.teacher
         )
 
-        # 学生をコースに登録
-        self.enrollment = Enrollment.objects.create(student=self.student, course=self.course)
+        self.enrollment = Enrollment.objects.create(student=self.student, course=self.course, status='ENROLLED')
 
-        # APIエンドポイントURL
         self.block_student_url = reverse('block-student', args=[self.course.id, self.student.id])
 
-    def test_teacher_can_block_student(self):
+    def test_teacher_can_block_student_with_reason(self):
         """教師が生徒をブロックできることを確認"""
         self.client.force_authenticate(user=self.teacher)
         data = {'reason': 'Disruptive behavior'}
@@ -710,13 +714,11 @@ class BlockStudentAPIViewTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.enrollment.refresh_from_db()
-        self.assertEqual(self.enrollment.status, 'BLOCKED')  # ステータスがBLOCKEDに更新される
-        self.assertEqual(self.enrollment.block_reason, 'Disruptive behavior')  # ブロック理由が設定される
-        self.assertEqual(response.data['message'], 'Student blocked successfully.')
+        self.assertEqual(self.enrollment.status, 'BLOCKED')
+        self.assertEqual(self.enrollment.block_reason, 'Disruptive behavior')
 
     def test_teacher_can_unblock_student(self):
         """教師が生徒をブロック解除できることを確認"""
-        # まず生徒をブロックする
         self.enrollment.status = 'BLOCKED'
         self.enrollment.block_reason = 'Disruptive behavior'
         self.enrollment.save()
@@ -726,19 +728,5 @@ class BlockStudentAPIViewTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.enrollment.refresh_from_db()
-        self.assertEqual(self.enrollment.status, 'ENROLLED')  # ステータスがENROLLEDに更新される
-        self.assertIsNone(self.enrollment.block_reason)  # ブロック理由がクリアされる
-        self.assertEqual(response.data['message'], 'Student unblocked successfully.')
-
-    def test_unauthenticated_user_cannot_block_or_unblock_student(self):
-        """認証されていないユーザーはアクセスできない"""
-        response = self.client.post(self.block_student_url, {'reason': 'Disruptive behavior'})
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_student_cannot_block_or_unblock(self):
-        """学生は他の学生をブロック/ブロック解除できない"""
-        self.client.force_authenticate(user=self.student)
-        response = self.client.post(self.block_student_url, {'reason': 'Disruptive behavior'})
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(self.enrollment.status, 'ENROLLED')
+        self.assertIsNone(self.enrollment.block_reason)

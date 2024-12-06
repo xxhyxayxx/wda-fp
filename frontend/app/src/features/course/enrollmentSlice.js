@@ -46,16 +46,15 @@ export const toggleBlockStudent = createAsyncThunk(
   async ({ courseId, studentId, reason }, { rejectWithValue }) => {
     try {
       const response = await apiClient.post(
-        `/courses/${courseId}/block/${studentId}/`,
+        `/courses/${courseId}/students/${studentId}/block/`,
         { reason }
       );
-      return response.data; // ブロック状態に関するデータを返す
+      return response.data; // APIレスポンスを返す
     } catch (error) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
-
 
 // enrollmentSliceの定義
 const enrollmentSlice = createSlice({
@@ -109,26 +108,23 @@ const enrollmentSlice = createSlice({
         state.error = action.payload;
       })
       // 学生をブロック/アンブロック
-    .addCase(toggleBlockStudent.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    })
-    .addCase(toggleBlockStudent.fulfilled, (state, action) => {
-      state.loading = false;
-
-      // 対象学生のステータスを更新
-      const updatedStudent = action.payload;
-      const studentIndex = state.courseStudents.findIndex(
-        (student) => student.id === updatedStudent.id
-      );
-      if (studentIndex !== -1) {
-        state.courseStudents[studentIndex] = updatedStudent;
-      }
-    })
-    .addCase(toggleBlockStudent.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
-    });
+      .addCase(toggleBlockStudent.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(toggleBlockStudent.fulfilled, (state, action) => {
+        state.loading = false;
+        // 対象学生のデータを更新
+        state.courseStudents = state.courseStudents.map((student) =>
+          student.id === action.payload.id
+            ? { ...student, status: action.payload.status, block_reason: action.payload.block_reason }
+            : student
+        );
+      })
+      .addCase(toggleBlockStudent.rejected, (state, action) => {
+        state.loading = false;
+        state.error = typeof action.payload === 'string' ? action.payload : JSON.stringify(action.payload);
+      });
   },
 });
 

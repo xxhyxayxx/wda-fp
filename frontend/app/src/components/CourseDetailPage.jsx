@@ -46,7 +46,7 @@ const CourseDetailPage = () => {
                 const filteredModuleIds = modules
                     .filter(module => module.course === parseInt(courseId))
                     .map(module => module.id);
-    
+
                 try {
                     for (const moduleId of filteredModuleIds) {
                         await dispatch(fetchFiles(moduleId)).unwrap();
@@ -157,6 +157,8 @@ const CourseDetailPage = () => {
                                                 src={student.profile_image || 'default-profile.png'}
                                                 alt={student.name}
                                                 className={styles.studentImage}
+                                                onClick={() => navigate(`/courses/${courseId}/students/${student.id}`)} // 修正済み
+                                                style={{ cursor: 'pointer' }} // クリック感を出すためのスタイル
                                             />
                                         </div>
                                     ))}

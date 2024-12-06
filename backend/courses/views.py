@@ -241,17 +241,19 @@ class CourseStudentsAPIView(APIView):
 
         # コースに登録されている生徒を取得
         enrollments = Enrollment.objects.filter(course=course)
-        students = [enrollment.student for enrollment in enrollments]
 
-        # 生徒のプロフィールデータをシリアライズ
+        # 生徒のプロフィールデータとステータスをシリアライズ
         student_data = [
             {
-                'id': student.id,
-                'name': student.name,
-                'email': student.email,
-                'profile_image': request.build_absolute_uri(student.profile_image.url) if student.profile_image else None,
+                'id': enrollment.student.id,
+                'name': enrollment.student.name,
+                'email': enrollment.student.email,
+                'profile_image': request.build_absolute_uri(enrollment.student.profile_image.url)
+                if enrollment.student.profile_image else None,
+                'status': enrollment.status,  # ステータスを追加
+                'block_reason': enrollment.block_reason,  # ブロック理由を追加（必要なら）
             }
-            for student in students
+            for enrollment in enrollments
         ]
 
         return Response(student_data, status=status.HTTP_200_OK)
