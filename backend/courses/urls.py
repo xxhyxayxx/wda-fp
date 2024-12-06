@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (
     CourseCreateAPIView, CourseUpdateAPIView, CourseDeleteAPIView, CourseListAPIView,
     ModuleCreateAPIView, ModuleUpdateAPIView, ModuleDeleteAPIView, ModuleListAPIView,
-    FileListAPIView, FileBatchUpdateAPIView, EnrollmentView, CompleteModuleView, EnrolledCoursesAPIView, CourseProgressView
+    FileListAPIView, FileBatchUpdateAPIView, EnrollmentView, CompleteModuleView,
+    EnrolledCoursesAPIView, CourseProgressView, CourseStudentsAPIView  # Import the new view
 )
 
 urlpatterns = [
@@ -29,4 +30,7 @@ urlpatterns = [
     # Module Completion API
     path('modules/<int:module_id>/complete/', CompleteModuleView.as_view(), name='module-complete'),  # モジュール完了
     path('courses/<int:course_id>/progress/', CourseProgressView.as_view(), name='course-progress'),
+
+    # Course Students API
+    path('<int:course_id>/students/', CourseStudentsAPIView.as_view(), name='course-students'),  # コース参加学生一覧
 ]

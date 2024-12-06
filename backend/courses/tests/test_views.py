@@ -596,3 +596,84 @@ class CourseProgressAPIViewTest(APITestCase):
         response = self.client.get(self.progress_url)
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+class CourseStudentsAPIViewTest(APITestCase):
+    def setUp(self):
+        # テスト用の教師と学生を作成
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            name='Teacher User',
+            user_type='teacher'
+        )
+        self.student1 = CustomUser.objects.create_user(
+            email='student1@example.com',
+            password='testpassword',
+            name='Student One',
+            user_type='student'
+        )
+        self.student2 = CustomUser.objects.create_user(
+            email='student2@example.com',
+            password='testpassword',
+            name='Student Two',
+            user_type='student'
+        )
+
+        # コースを作成
+        self.course = Course.objects.create(
+            title='Test Course',
+            description='This is a test course.',
+            category='Test Category',
+            is_published=True,
+            created_by=self.teacher
+        )
+
+        # 学生をコースに登録
+        Enrollment.objects.create(student=self.student1, course=self.course)
+        Enrollment.objects.create(student=self.student2, course=self.course)
+
+        # APIエンドポイントURL
+        self.course_students_url = reverse('course-students', args=[self.course.id])
+
+    def test_get_students_in_course(self):
+        """コースに登録されている学生を取得"""
+        self.client.force_authenticate(user=self.student1)
+        response = self.client.get(self.course_students_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)  # 学生が2人登録されている
+
+        # 学生の名前が含まれるかを確認
+        student_names = [student['name'] for student in response.data]
+        self.assertIn('Student One', student_names)
+        self.assertIn('Student Two', student_names)
+
+    def test_no_students_in_course(self):
+        """コースに登録された学生がいない場合"""
+        empty_course = Course.objects.create(
+            title='Empty Course',
+            description='No students here.',
+            category='Empty Category',
+            is_published=True,
+            created_by=self.teacher
+        )
+        empty_course_students_url = reverse('course-students', args=[empty_course.id])
+
+        self.client.force_authenticate(user=self.student1)
+        response = self.client.get(empty_course_students_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)  # 登録された学生がいない
+
+    def test_teacher_cannot_access_students(self):
+        """教師がコースに登録されている学生を取得できない"""
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.get(self.course_students_url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_unauthenticated_user_cannot_access_students(self):
+        """認証されていないユーザーがコース学生を取得できない"""
+        response = self.client.get(self.course_students_url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
