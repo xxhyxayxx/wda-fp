@@ -19,8 +19,21 @@ export const fetchEnrollments = createAsyncThunk(
   'enrollment/fetchEnrollments',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await apiClient.get('/courses/enrollments/'); // 登録済みコース一覧を取得するAPI
+      const response = await apiClient.get('/courses/enrollments/');
       return response.data;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+// 非同期アクション: コースに登録されている学生一覧の取得
+export const fetchCourseStudents = createAsyncThunk(
+  'enrollment/fetchCourseStudents',
+  async (courseId, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get(`/courses/${courseId}/students/`);
+      return response.data; // 学生一覧を返す
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -32,6 +45,7 @@ const enrollmentSlice = createSlice({
   name: 'enrollment',
   initialState: {
     enrollments: [], // 登録済みコースのリスト
+    courseStudents: [], // コースに登録されている学生のリスト
     loading: false,
     error: null,
   },
@@ -45,7 +59,7 @@ const enrollmentSlice = createSlice({
       })
       .addCase(enrollInCourse.fulfilled, (state, action) => {
         state.loading = false;
-        state.enrollments.push(action.payload); // 新しく登録されたコースを追加
+        state.enrollments.push(action.payload);
       })
       .addCase(enrollInCourse.rejected, (state, action) => {
         state.loading = false;
@@ -58,9 +72,22 @@ const enrollmentSlice = createSlice({
       })
       .addCase(fetchEnrollments.fulfilled, (state, action) => {
         state.loading = false;
-        state.enrollments = action.payload; // 登録済みコース一覧を更新
+        state.enrollments = action.payload;
       })
       .addCase(fetchEnrollments.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // コースに登録されている学生一覧の取得
+      .addCase(fetchCourseStudents.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCourseStudents.fulfilled, (state, action) => {
+        state.loading = false;
+        state.courseStudents = action.payload;
+      })
+      .addCase(fetchCourseStudents.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
       });
