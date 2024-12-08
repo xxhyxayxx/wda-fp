@@ -5,6 +5,7 @@ import moduleReducer from './features/course/moduleSlice';
 import fileReducer from './features/course/fileSlice'; // fileSlice をインポート
 import enrollmentReducer from './features/course/enrollmentSlice';
 import moduleProgressReducer from './features/course/moduleProgressSlice';
+import feedbackReducer from './features/course/feedbackSlice';
 
 export const store = configureStore({
   reducer: {
@@ -14,5 +15,6 @@ export const store = configureStore({
     file: fileReducer,
     enrollment: enrollmentReducer, // enrollment スライス
     moduleProgress: moduleProgressReducer, // moduleProgress スライス
+    feedback: feedbackReducer,
   },
 });
