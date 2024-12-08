@@ -1,6 +1,6 @@
 from rest_framework import generics, permissions, status
-from .models import Course, Module, File, Module, ModuleProgress, Enrollment
-from .serializers import CourseSerializer, ModuleSerializer, FileSerializer, ModuleProgressSerializer, EnrollmentSerializer
+from .models import Course, Module, File, Module, ModuleProgress, Enrollment, Feedback
+from .serializers import CourseSerializer, ModuleSerializer, FileSerializer, ModuleProgressSerializer, EnrollmentSerializer, FeedbackSerializer
 from .permissions import IsTeacher
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -12,6 +12,7 @@ from django.utils.timezone import now
 from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
+from django.core.exceptions import PermissionDenied
 
 # コース作成、更新、削除、一覧ビュー
 
@@ -291,3 +292,33 @@ class BlockStudentAPIView(APIView):
             'status': enrollment.status,
             'block_reason': enrollment.block_reason
         }, status=status.HTTP_200_OK)
+
+class FeedbackCreateAPIView(generics.CreateAPIView):
+    queryset = Feedback.objects.all()
+    serializer_class = FeedbackSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # ユーザーが生徒であることを確認
+        if self.request.user.user_type != 'student':
+            raise PermissionDenied("Only students can submit feedback.")
+
+        # Enrollment が現在の生徒に紐付いているか確認
+        enrollment_id = self.request.data.get('enrollment_id')
+        enrollment = get_object_or_404(Enrollment, id=enrollment_id, student=self.request.user)
+
+        # フィードバックを保存
+        serializer.save(enrollment=enrollment)
+
+
+class FeedbackListAPIView(generics.ListAPIView):
+    serializer_class = FeedbackSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # ユーザーが教師の場合は、自分のコースに関するフィードバックを返す
+        if self.request.user.user_type == 'teacher':
+            return Feedback.objects.filter(enrollment__course__created_by=self.request.user)
+        
+        # ユーザーが生徒の場合は、自分が登録したコースのフィードバックを返す
+        return Feedback.objects.filter(enrollment__student=self.request.user)

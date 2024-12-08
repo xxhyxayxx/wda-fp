@@ -3,7 +3,7 @@ from rest_framework.test import APITestCase
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from accounts.models import CustomUser
-from courses.models import Course, Module, File, Enrollment, ModuleProgress
+from courses.models import Course, Module, File, Enrollment, ModuleProgress, Feedback
 import hashlib
 from django.utils.timezone import now
 
@@ -730,3 +730,112 @@ class BlockStudentAPIViewTest(APITestCase):
         self.enrollment.refresh_from_db()
         self.assertEqual(self.enrollment.status, 'ENROLLED')
         self.assertIsNone(self.enrollment.block_reason)
+
+class FeedbackAPIViewTest(APITestCase):
+
+    def setUp(self):
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            name='Teacher User',
+            user_type='teacher'
+        )
+        self.student = CustomUser.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            name='Student User',
+            user_type='student'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            description='This is a test course.',
+            created_by=self.teacher
+        )
+        self.enrollment = Enrollment.objects.create(student=self.student, course=self.course)
+
+        self.feedback_create_url = reverse('feedback-create')
+        self.feedback_list_url = reverse('feedback-list')
+
+    def test_student_can_create_feedback(self):
+        """生徒がフィードバックを投稿できることを確認"""
+        self.client.force_authenticate(user=self.student)
+        data = {
+            'enrollment_id': self.enrollment.id,
+            'rating': 5,
+            'comment': 'Excellent course!',
+        }
+        response = self.client.post(self.feedback_create_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Feedback.objects.count(), 1)
+        feedback = Feedback.objects.first()
+        self.assertEqual(feedback.rating, 5)
+        self.assertEqual(feedback.comment, 'Excellent course!')
+
+    def test_teacher_cannot_create_feedback(self):
+        """教師がフィードバックを投稿できないことを確認"""
+        self.client.force_authenticate(user=self.teacher)
+        data = {
+            'enrollment_id': self.enrollment.id,
+            'rating': 5,
+            'comment': 'Not allowed.',
+        }
+        response = self.client.post(self.feedback_create_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(Feedback.objects.count(), 0)
+
+    def test_student_cannot_create_feedback_without_enrollment(self):
+        """登録されていない生徒がフィードバックを投稿できないことを確認"""
+        other_student = CustomUser.objects.create_user(
+            email='other_student@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.client.force_authenticate(user=other_student)
+        data = {
+            'enrollment_id': self.enrollment.id,
+            'rating': 5,
+            'comment': 'Invalid attempt.',
+        }
+        response = self.client.post(self.feedback_create_url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(Feedback.objects.count(), 0)
+
+    def test_get_feedback_list_as_teacher(self):
+        """教師がフィードバック一覧を取得できることを確認"""
+        Feedback.objects.create(
+            enrollment=self.enrollment,
+            rating=4,
+            comment='Good course.'
+        )
+
+        self.client.force_authenticate(user=self.teacher)
+        response = self.client.get(self.feedback_list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['rating'], 4)
+        self.assertEqual(response.data[0]['comment'], 'Good course.')
+
+    def test_get_feedback_list_as_student(self):
+        """生徒が自身のフィードバック一覧を取得できることを確認"""
+        Feedback.objects.create(
+            enrollment=self.enrollment,
+            rating=4,
+            comment='Good course.'
+        )
+
+        self.client.force_authenticate(user=self.student)
+        response = self.client.get(self.feedback_list_url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['rating'], 4)
+        self.assertEqual(response.data[0]['comment'], 'Good course.')
+
+    def test_unauthorized_user_cannot_access_feedback(self):
+        """認証されていないユーザーがフィードバックにアクセスできないことを確認"""
+        response = self.client.get(self.feedback_list_url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

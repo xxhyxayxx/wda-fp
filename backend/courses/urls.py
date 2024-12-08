@@ -3,7 +3,7 @@ from .views import (
     CourseCreateAPIView, CourseUpdateAPIView, CourseDeleteAPIView, CourseListAPIView,
     ModuleCreateAPIView, ModuleUpdateAPIView, ModuleDeleteAPIView, ModuleListAPIView,
     FileListAPIView, FileBatchUpdateAPIView, EnrollmentView, CompleteModuleView,
-    EnrolledCoursesAPIView, CourseProgressView, CourseStudentsAPIView, BlockStudentAPIView  # Import the new view
+    EnrolledCoursesAPIView, CourseProgressView, CourseStudentsAPIView, BlockStudentAPIView, FeedbackCreateAPIView, FeedbackListAPIView  # Import the new view
 )
 
 urlpatterns = [
@@ -35,4 +35,8 @@ urlpatterns = [
     path('<int:course_id>/students/', CourseStudentsAPIView.as_view(), name='course-students'),  # コース参加学生一覧
     
     path('<int:course_id>/students/<int:student_id>/block/', BlockStudentAPIView.as_view(), name='block-student'),
+    
+    # Feedback API
+    path('feedback/', FeedbackListAPIView.as_view(), name='feedback-list'),  # フィードバック一覧
+    path('feedback/create/', FeedbackCreateAPIView.as_view(), name='feedback-create'),  # フィードバック作成
 ]

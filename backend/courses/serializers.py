@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Course, Module, File, Enrollment, ModuleProgress
+from .models import Course, Module, File, Enrollment, ModuleProgress, Feedback
 from accounts.models import CustomUser  # CustomUserをインポート
 from rest_framework.exceptions import ValidationError
 
@@ -117,3 +117,13 @@ class ModuleProgressSerializer(serializers.ModelSerializer):
             'title': obj.module.title,
             'description': obj.module.description,
         }
+
+class FeedbackSerializer(serializers.ModelSerializer):
+    enrollment_id = serializers.IntegerField(source='enrollment.id', read_only=True)
+    course_title = serializers.CharField(source='enrollment.course.title', read_only=True)
+    student_name = serializers.CharField(source='enrollment.student.name', read_only=True)
+
+    class Meta:
+        model = Feedback
+        fields = ['id', 'enrollment_id', 'course_title', 'student_name', 'rating', 'comment', 'created_at']
+        read_only_fields = ['id', 'enrollment_id', 'course_title', 'student_name', 'created_at']
