@@ -81,3 +81,23 @@ class ModuleProgress(models.Model):
         if self.is_completed and not self.completed_at:
             self.completed_at = timezone.now()
         super().save(*args, **kwargs)
+
+class Feedback(models.Model):
+    enrollment = models.OneToOneField(
+        Enrollment,
+        on_delete=models.CASCADE,
+        related_name='feedback',
+        help_text='Feedback can only be submitted once per enrollment.'
+    )
+    rating = models.PositiveSmallIntegerField(
+        choices=[(i, f'{i} Stars') for i in range(1, 6)],
+        help_text='Please enter a rating between 1 and 5 stars.'
+    )
+    comment = models.TextField(
+        blank=True,
+        help_text='Provide detailed feedback on the course (optional).'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.enrollment.student.name} - {self.enrollment.course.title} ({self.rating} Stars)"

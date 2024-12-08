@@ -1,6 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from courses.models import Course, Module, File, Enrollment, ModuleProgress
+from courses.models import Course, Module, File, Enrollment, ModuleProgress, Feedback
 
 User = get_user_model()
 
@@ -262,3 +262,58 @@ class ModuleProgressModelTest(TestCase):
         ModuleProgress.objects.create(enrollment=self.enrollment, module=self.module)
         with self.assertRaises(Exception):  # IntegrityErrorを捕捉
             ModuleProgress.objects.create(enrollment=self.enrollment, module=self.module)
+            
+class FeedbackModelTest(TestCase):
+
+    def setUp(self):
+        # テスト用のデータ作成
+        self.student = User.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.teacher = User.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            user_type='teacher'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            description='This is a test course.',
+            created_by=self.teacher
+        )
+        self.enrollment = Enrollment.objects.create(
+            student=self.student,
+            course=self.course
+        )
+
+    def test_feedback_creation(self):
+        # フィードバックの作成
+        feedback = Feedback.objects.create(
+            enrollment=self.enrollment,
+            rating=5,
+            comment='Great course!'
+        )
+
+        # モデルフィールドの確認
+        self.assertEqual(feedback.enrollment, self.enrollment)
+        self.assertEqual(feedback.rating, 5)
+        self.assertEqual(feedback.comment, 'Great course!')
+        self.assertIsNotNone(feedback.created_at)  # 作成日時が設定されているか確認
+
+    def test_feedback_str_method(self):
+        feedback = Feedback.objects.create(
+            enrollment=self.enrollment,
+            rating=4,
+            comment='Good course, but could be better.'
+        )
+        self.assertEqual(
+            str(feedback),
+            f"{self.enrollment.student.name} - {self.enrollment.course.title} (4 Stars)"
+        )
+
+    def test_feedback_unique_constraint(self):
+        # 同じEnrollmentに対して複数のFeedbackが作成されないか確認
+        Feedback.objects.create(enrollment=self.enrollment, rating=5, comment='Excellent!')
+        with self.assertRaises(Exception):  # IntegrityErrorを捕捉
+            Feedback.objects.create(enrollment=self.enrollment, rating=4, comment='Duplicate Feedback')
