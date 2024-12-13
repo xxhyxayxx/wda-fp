@@ -5,6 +5,7 @@ import { fetchCourses } from '../features/course/courseSlice';
 import { fetchModules } from '../features/course/moduleSlice';
 import { fetchFiles } from '../features/course/fileSlice';
 import { completeProgress, fetchCourseProgress } from '../features/course/moduleProgressSlice';
+import FeedbackModal from './FeedbackModal'; // フィードバックモーダルをインポート
 import NavBar from './NavBar';
 import styles from './styles/StudentCourseDetailPage.module.css';
 
@@ -18,6 +19,13 @@ const StudentCourseDetailPage = () => {
     const [course, setCourse] = useState(null);
     const [fileDrawerOpen, setFileDrawerOpen] = useState({});
     const [hasFetchedFiles, setHasFetchedFiles] = useState(false);
+    const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false); // モーダルの状態を管理
+    const { enrollments } = useSelector((state) => state.enrollment);
+    const selectedEnrollment = enrollments.find(
+        (enrollment) => enrollment.course.id === parseInt(courseId)
+    );
+    const selectedEnrollmentId = selectedEnrollment?.id;
+
 
     useEffect(() => {
         async function loadCourseDetails() {
@@ -51,11 +59,22 @@ const StudentCourseDetailPage = () => {
     }, [modules, hasFetchedFiles, dispatch, courseId]);
 
     useEffect(() => {
-        // モジュール完了の進捗をリロードする
-        if (progress && Object.keys(progress).length > 0) {
-            console.log('Progress updated:', progress); // デバッグ用
+        const courseProgressData = courseProgress[courseId] || {};
+        const courseProgressPercentage = courseProgressData.course_progress || 0;
+
+        if (courseProgressPercentage === 100 && selectedEnrollmentId) {
+            setIsFeedbackModalOpen(true); // モーダルを開く
         }
-    }, [progress]);
+    }, [courseProgress, courseId, selectedEnrollmentId]);
+
+    useEffect(() => {
+        console.log('Selected Enrollment:', selectedEnrollment);
+        console.log('Selected Enrollment ID:', selectedEnrollment?.id);
+    }, [selectedEnrollment]);
+
+    useEffect(() => {
+        console.log('Enrollments:', enrollments);
+    }, [enrollments]);
 
     const toggleFileDrawer = (moduleId) => {
         setFileDrawerOpen((prevState) => ({
@@ -101,18 +120,16 @@ const StudentCourseDetailPage = () => {
                                             <div className={styles.moduleHeader}>
                                                 <h4>{module.title}</h4>
                                                 <span
-                                                    className={`${styles.moduleStatus} ${
-                                                        isModuleCompleted
-                                                            ? styles.completedLabel
-                                                            : styles.incompleteLabel
-                                                    }`}
+                                                    className={`${styles.moduleStatus} ${isModuleCompleted
+                                                        ? styles.completedLabel
+                                                        : styles.incompleteLabel
+                                                        }`}
                                                 >
                                                     {isModuleCompleted ? 'Completed' : 'Incomplete'}
                                                 </span>
                                                 <i
-                                                    className={`fa-solid ${
-                                                        isDrawerOpen ? 'fa-chevron-up' : 'fa-chevron-down'
-                                                    }`}
+                                                    className={`fa-solid ${isDrawerOpen ? 'fa-chevron-up' : 'fa-chevron-down'
+                                                        }`}
                                                     onClick={() => toggleFileDrawer(module.id)}
                                                     style={{ cursor: 'pointer' }}
                                                 ></i>
@@ -137,9 +154,8 @@ const StudentCourseDetailPage = () => {
                                                         <p>No files available.</p>
                                                     )}
                                                     <button
-                                                        className={`${styles.completeButton} ${
-                                                            isModuleCompleted ? styles.completed : ''
-                                                        }`}
+                                                        className={`${styles.completeButton} ${isModuleCompleted ? styles.completed : ''
+                                                            }`}
                                                         onClick={() => handleCompleteModule(module.id)}
                                                         disabled={isModuleCompleted}
                                                     >
@@ -159,6 +175,14 @@ const StudentCourseDetailPage = () => {
                     <p>Loading course details...</p>
                 )}
             </div>
+            {/* フィードバックモーダル */}
+            {isFeedbackModalOpen && (
+                <FeedbackModal
+                    isOpen={isFeedbackModalOpen}
+                    onClose={() => setIsFeedbackModalOpen(false)}
+                    enrollmentId={selectedEnrollmentId || null} // 安全に null を渡す
+                />
+            )}
         </div>
     );
 };

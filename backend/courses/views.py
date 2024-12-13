@@ -204,6 +204,8 @@ class CourseProgressView(APIView):
 
         # 進捗率を更新
         enrollment.progress = progress
+        if progress == 100:
+            enrollment.status = 'COMPLETED'
         enrollment.save()
 
         # モジュール進捗データを取得
@@ -299,17 +301,23 @@ class FeedbackCreateAPIView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
+        # リクエストデータを確認
+        print("Request data:", self.request.data)
+
         # ユーザーが生徒であることを確認
         if self.request.user.user_type != 'student':
             raise PermissionDenied("Only students can submit feedback.")
 
-        # Enrollment が現在の生徒に紐付いているか確認
+        # Enrollment IDを取得し、値を確認
         enrollment_id = self.request.data.get('enrollment_id')
+        print("Enrollment ID:", enrollment_id)
+
+        # Enrollmentが現在の生徒に紐付いているか確認し、オブジェクトを確認
         enrollment = get_object_or_404(Enrollment, id=enrollment_id, student=self.request.user)
+        print("Enrollment object:", enrollment)
 
         # フィードバックを保存
         serializer.save(enrollment=enrollment)
-
 
 class FeedbackListAPIView(generics.ListAPIView):
     serializer_class = FeedbackSerializer

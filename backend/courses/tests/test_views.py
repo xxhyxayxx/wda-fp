@@ -753,7 +753,7 @@ class FeedbackAPIViewTest(APITestCase):
         )
         self.enrollment = Enrollment.objects.create(student=self.student, course=self.course)
 
-        self.feedback_create_url = reverse('feedback-create')
+        self.feedback_create_url = reverse('feedback-create', args=[self.enrollment.id])
         self.feedback_list_url = reverse('feedback-list')
 
     def test_student_can_create_feedback(self):

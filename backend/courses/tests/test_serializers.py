@@ -336,3 +336,61 @@ class FeedbackSerializerTest(TestCase):
         serializer = FeedbackSerializer(data=invalid_data)
         self.assertFalse(serializer.is_valid())  # バリデーションが失敗することを確認
         self.assertIn('rating', serializer.errors)  # エラーにratingが含まれることを確認
+
+    def test_feedback_serializer_rating_as_string(self):
+        # ratingが文字列として送信される場合
+        data_with_string_rating = {
+            'enrollment_id': self.enrollment.id,
+            'rating': '5',  # 文字列
+            'comment': 'Rating as string'
+        }
+        serializer = FeedbackSerializer(data=data_with_string_rating)
+        self.assertTrue(serializer.is_valid())  # バリデーションが通ることを確認
+
+        # 正しく保存されるか確認
+        feedback = serializer.save(enrollment=self.enrollment)
+        self.assertEqual(feedback.rating, 5)
+
+    def test_feedback_serializer_missing_rating(self):
+        # ratingが欠如している場合
+        data_missing_rating = {
+            'enrollment_id': self.enrollment.id,
+            'comment': 'Missing rating'
+        }
+        serializer = FeedbackSerializer(data=data_missing_rating)
+        self.assertFalse(serializer.is_valid())  # バリデーションが失敗することを確認
+        self.assertIn('rating', serializer.errors)  # エラーにratingが含まれることを確認
+
+    def test_feedback_serializer_invalid_rating_type(self):
+        # ratingが無効な型（例えば文字列ではない文字列）で送信される場合
+        data_with_invalid_rating = {
+            'enrollment_id': self.enrollment.id,
+            'rating': 'invalid',  # 無効な文字列
+            'comment': 'Invalid rating type'
+        }
+        serializer = FeedbackSerializer(data=data_with_invalid_rating)
+        self.assertFalse(serializer.is_valid())  # バリデーションが失敗することを確認
+        self.assertIn('rating', serializer.errors)  # エラーにratingが含まれることを確認
+
+    def test_feedback_serializer_rating_out_of_range(self):
+        # ratingが範囲外の場合（負の値）
+        data_with_negative_rating = {
+            'enrollment_id': self.enrollment.id,
+            'rating': -1,  # 無効な負の値
+            'comment': 'Negative rating'
+        }
+        serializer = FeedbackSerializer(data=data_with_negative_rating)
+        self.assertFalse(serializer.is_valid())  # バリデーションが失敗することを確認
+        self.assertIn('rating', serializer.errors)  # エラーにratingが含まれることを確認
+    
+    def test_feedback_serializer_without_comment(self):
+        """コメント無しでもフィードバックを投稿できることを確認"""
+        data = {
+            'rating': 5
+        }
+        serializer = FeedbackSerializer(data=data)
+        self.assertTrue(serializer.is_valid())  # バリデーション成功
+
+        feedback = serializer.save(enrollment=self.enrollment)
+        self.assertEqual(feedback.rating, 5)
+        self.assertEqual(feedback.comment, '')  # コメントが空文字列になることを確認

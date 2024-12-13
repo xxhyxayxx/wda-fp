@@ -50,27 +50,45 @@ describe('feedbackSlice', () => {
   test('should create feedback successfully', async () => {
     // Mock successful response
     const newFeedback = { id: 3, comment: 'Excellent course!', rating: 5 };
+    const enrollmentId = 1; // Test用のenrollment_id
     apiClient.post.mockResolvedValueOnce({ data: newFeedback });
 
     // Dispatch createFeedback action
-    await store.dispatch(createFeedback(newFeedback));
+    await store.dispatch(
+      createFeedback({ enrollment_id: enrollmentId, feedbackData: { comment: 'Excellent course!', rating: 5 } })
+    );
 
     // Check state
     const state = store.getState().feedback;
     expect(state.feedbacks).toContainEqual(newFeedback);
     expect(state.error).toBeNull();
+
+    // Ensure the correct API call is made
+    expect(apiClient.post).toHaveBeenCalledWith(
+      `/courses/feedback/create/${enrollmentId}/`,
+      { comment: 'Excellent course!', rating: 5 }
+    );
   });
 
   test('should handle create feedback failure', async () => {
     // Mock failed response
     const mockError = 'Failed to create feedback';
+    const enrollmentId = 1; // Test用のenrollment_id
     apiClient.post.mockRejectedValueOnce(new Error(mockError));
 
     // Dispatch createFeedback action
-    await store.dispatch(createFeedback({ comment: 'Needs improvement.', rating: 3 }));
+    await store.dispatch(
+      createFeedback({ enrollment_id: enrollmentId, feedbackData: { comment: 'Needs improvement.', rating: 3 } })
+    );
 
     // Check state
     const state = store.getState().feedback;
     expect(state.error).toBe(mockError);
+
+    // Ensure the correct API call is made
+    expect(apiClient.post).toHaveBeenCalledWith(
+      `/courses/feedback/create/${enrollmentId}/`,
+      { comment: 'Needs improvement.', rating: 3 }
+    );
   });
 });

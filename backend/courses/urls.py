@@ -38,5 +38,5 @@ urlpatterns = [
     
     # Feedback API
     path('feedback/', FeedbackListAPIView.as_view(), name='feedback-list'),  # フィードバック一覧
-    path('feedback/create/', FeedbackCreateAPIView.as_view(), name='feedback-create'),  # フィードバック作成
+    path('feedback/create/<int:enrollment_id>/', FeedbackCreateAPIView.as_view(), name='feedback-create'),
 ]

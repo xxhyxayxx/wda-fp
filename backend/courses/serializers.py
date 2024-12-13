@@ -127,3 +127,18 @@ class FeedbackSerializer(serializers.ModelSerializer):
         model = Feedback
         fields = ['id', 'enrollment_id', 'course_title', 'student_name', 'rating', 'comment', 'created_at']
         read_only_fields = ['id', 'enrollment_id', 'course_title', 'student_name', 'created_at']
+        extra_kwargs = {
+            'comment': {'required': False, 'allow_blank': True},  # オプション化
+        }
+
+    def validate_rating(self, value):
+        try:
+            value = int(value)  # 文字列を整数に変換
+        except ValueError:
+            raise serializers.ValidationError('Rating must be an integer.')
+        
+        if value < 1 or value > 5:
+            raise serializers.ValidationError('Rating must be between 1 and 5.')
+        
+        return value
+
