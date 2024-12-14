@@ -1,7 +1,7 @@
 from django.test import TestCase
 from accounts.models import CustomUser
-from courses.models import Course, Module, File
-from courses.serializers import CourseSerializer, ModuleSerializer, FileSerializer
+from courses.models import Course, Module, File, Enrollment, Course, ModuleProgress, Feedback
+from courses.serializers import CourseSerializer, ModuleSerializer, FileSerializer, EnrollmentSerializer, ModuleProgressSerializer, FeedbackSerializer
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIRequestFactory
 from rest_framework.exceptions import ValidationError
@@ -181,3 +181,216 @@ class FileSerializerTest(TestCase):
 
         self.assertFalse(file_serializer.is_valid())  # バリデーションが失敗することを確認
         self.assertIn('file', file_serializer.errors)  # エラーメッセージが含まれていることを確認
+
+class EnrollmentSerializerTest(TestCase):
+    def setUp(self):
+        # 必要なデータを作成
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            user_type='teacher'
+        )
+        self.student = CustomUser.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            created_by=self.teacher
+        )
+        self.enrollment = Enrollment.objects.create(
+            student=self.student,
+            course=self.course,
+            progress=75.5
+        )
+
+    def test_serialization(self):
+        serializer = EnrollmentSerializer(self.enrollment)
+        data = serializer.data
+
+        # 各フィールドの検証
+        self.assertEqual(data['student'], self.student.id)
+        self.assertEqual(data['course']['id'], self.course.id)  # ネストされたコースデータを確認
+        self.assertEqual(data['progress'], 75)  # 小数点以下を切り捨てて整数化されていることを確認
+        self.assertEqual(data['status'], 'ENROLLED')
+
+class ModuleProgressSerializerTest(TestCase):
+    def setUp(self):
+        # 必要なデータを作成
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            user_type='teacher'
+        )
+        self.student = CustomUser.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            user_type='student'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            created_by=self.teacher
+        )
+        self.module = Module.objects.create(
+            course=self.course,
+            title='Test Module',
+            description='Module Description',
+            created_by=self.teacher
+        )
+        # Enrollmentを作成
+        self.enrollment = Enrollment.objects.create(
+            student=self.student,
+            course=self.course
+        )
+        # ModuleProgressを作成
+        self.progress = ModuleProgress.objects.create(
+            enrollment=self.enrollment,
+            module=self.module,
+            is_completed=True
+        )
+
+    def test_serialization(self):
+        # self.progress が正しく設定されていることを確認
+        serializer = ModuleProgressSerializer(self.progress)
+        data = serializer.data
+
+        # 各フィールドの検証
+        self.assertEqual(data['enrollment'], self.enrollment.id)
+        self.assertTrue(data['is_completed'])
+
+        # ネストされたモジュール情報の確認
+        self.assertEqual(data['module']['id'], self.module.id)  # モジュールの ID を確認
+        self.assertEqual(data['module']['title'], 'Test Module')  # モジュールのタイトルを確認
+        self.assertEqual(data['module']['description'], 'Module Description')  # モジュールの説明を確認
+
+class FeedbackSerializerTest(TestCase):
+    def setUp(self):
+        # 必要なテストデータを作成
+        self.teacher = CustomUser.objects.create_user(
+            email='teacher@example.com',
+            password='testpassword',
+            name='Test Teacher',
+            user_type='teacher'
+        )
+        self.student = CustomUser.objects.create_user(
+            email='student@example.com',
+            password='testpassword',
+            name='Test Student',
+            user_type='student'
+        )
+        self.course = Course.objects.create(
+            title='Test Course',
+            description='This is a test course.',
+            created_by=self.teacher
+        )
+        self.enrollment = Enrollment.objects.create(
+            student=self.student,
+            course=self.course
+        )
+        self.feedback_data = {
+            'enrollment_id': self.enrollment.id,
+            'rating': 5,
+            'comment': 'Excellent course!',
+        }
+
+    def test_feedback_serializer_valid_data(self):
+        # 有効なデータでのシリアライザーのテスト
+        serializer = FeedbackSerializer(data=self.feedback_data)
+        self.assertTrue(serializer.is_valid())
+        
+        # enrollment を手動で渡して保存
+        feedback = serializer.save(enrollment=self.enrollment)
+        
+        # フィードバックが正しく作成されているか確認
+        self.assertEqual(feedback.enrollment, self.enrollment)
+        self.assertEqual(feedback.rating, 5)
+        self.assertEqual(feedback.comment, 'Excellent course!')
+
+    def test_feedback_serializer_read_only_fields(self):
+        # フィードバックを作成
+        feedback = Feedback.objects.create(
+            enrollment=self.enrollment,
+            rating=4,
+            comment='Great course!'
+        )
+        
+        # シリアライザーでデータを取得
+        serializer = FeedbackSerializer(feedback)
+        data = serializer.data
+
+        # 読み取り専用フィールドの確認
+        self.assertEqual(data['enrollment_id'], self.enrollment.id)
+        self.assertEqual(data['course_title'], self.course.title)
+        self.assertEqual(data['student_name'], self.student.name)
+        self.assertEqual(data['rating'], 4)
+        self.assertEqual(data['comment'], 'Great course!')
+
+    def test_feedback_serializer_invalid_data(self):
+        # 無効なデータでのテスト（ratingが範囲外の場合）
+        invalid_data = {
+            'enrollment_id': self.enrollment.id,
+            'rating': 6,  # 1〜5の範囲外
+            'comment': 'Invalid rating'
+        }
+        serializer = FeedbackSerializer(data=invalid_data)
+        self.assertFalse(serializer.is_valid())  # バリデーションが失敗することを確認
+        self.assertIn('rating', serializer.errors)  # エラーにratingが含まれることを確認
+
+    def test_feedback_serializer_rating_as_string(self):
+        # ratingが文字列として送信される場合
+        data_with_string_rating = {
+            'enrollment_id': self.enrollment.id,
+            'rating': '5',  # 文字列
+            'comment': 'Rating as string'
+        }
+        serializer = FeedbackSerializer(data=data_with_string_rating)
+        self.assertTrue(serializer.is_valid())  # バリデーションが通ることを確認
+
+        # 正しく保存されるか確認
+        feedback = serializer.save(enrollment=self.enrollment)
+        self.assertEqual(feedback.rating, 5)
+
+    def test_feedback_serializer_missing_rating(self):
+        # ratingが欠如している場合
+        data_missing_rating = {
+            'enrollment_id': self.enrollment.id,
+            'comment': 'Missing rating'
+        }
+        serializer = FeedbackSerializer(data=data_missing_rating)
+        self.assertFalse(serializer.is_valid())  # バリデーションが失敗することを確認
+        self.assertIn('rating', serializer.errors)  # エラーにratingが含まれることを確認
+
+    def test_feedback_serializer_invalid_rating_type(self):
+        # ratingが無効な型（例えば文字列ではない文字列）で送信される場合
+        data_with_invalid_rating = {
+            'enrollment_id': self.enrollment.id,
+            'rating': 'invalid',  # 無効な文字列
+            'comment': 'Invalid rating type'
+        }
+        serializer = FeedbackSerializer(data=data_with_invalid_rating)
+        self.assertFalse(serializer.is_valid())  # バリデーションが失敗することを確認
+        self.assertIn('rating', serializer.errors)  # エラーにratingが含まれることを確認
+
+    def test_feedback_serializer_rating_out_of_range(self):
+        # ratingが範囲外の場合（負の値）
+        data_with_negative_rating = {
+            'enrollment_id': self.enrollment.id,
+            'rating': -1,  # 無効な負の値
+            'comment': 'Negative rating'
+        }
+        serializer = FeedbackSerializer(data=data_with_negative_rating)
+        self.assertFalse(serializer.is_valid())  # バリデーションが失敗することを確認
+        self.assertIn('rating', serializer.errors)  # エラーにratingが含まれることを確認
+    
+    def test_feedback_serializer_without_comment(self):
+        """コメント無しでもフィードバックを投稿できることを確認"""
+        data = {
+            'rating': 5
+        }
+        serializer = FeedbackSerializer(data=data)
+        self.assertTrue(serializer.is_valid())  # バリデーション成功
+
+        feedback = serializer.save(enrollment=self.enrollment)
+        self.assertEqual(feedback.rating, 5)
+        self.assertEqual(feedback.comment, '')  # コメントが空文字列になることを確認

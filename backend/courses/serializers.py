@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Course, Module, File
+from .models import Course, Module, File, Enrollment, ModuleProgress, Feedback
 from accounts.models import CustomUser  # CustomUserをインポート
 from rest_framework.exceptions import ValidationError
 
@@ -90,3 +90,55 @@ class FileSerializer(serializers.ModelSerializer):
                 raise ValidationError(f"File update validation failed for {validated_data['file'].name}")
 
         return files
+
+class EnrollmentSerializer(serializers.ModelSerializer):
+    course = CourseSerializer()  # ネストされたコースデータ
+    progress = serializers.SerializerMethodField()  # カスタムフィールドで進捗率をフォーマット
+
+    class Meta:
+        model = Enrollment
+        fields = ['id', 'student', 'course', 'status', 'progress', 'block_reason', 'enrolled_at', 'completed_at']
+
+    def get_progress(self, obj):
+        # Decimal から整数値の進捗率を計算
+        return int(obj.progress) if obj.progress is not None else 0
+
+class ModuleProgressSerializer(serializers.ModelSerializer):
+    module = serializers.SerializerMethodField()  # モジュール情報をネスト
+
+    class Meta:
+        model = ModuleProgress
+        fields = ['id', 'enrollment', 'module', 'is_completed', 'completed_at']
+
+    def get_module(self, obj):
+        # 必要なモジュール情報を取得
+        return {
+            'id': obj.module.id,
+            'title': obj.module.title,
+            'description': obj.module.description,
+        }
+
+class FeedbackSerializer(serializers.ModelSerializer):
+    enrollment_id = serializers.IntegerField(source='enrollment.id', read_only=True)
+    course_title = serializers.CharField(source='enrollment.course.title', read_only=True)
+    student_name = serializers.CharField(source='enrollment.student.name', read_only=True)
+
+    class Meta:
+        model = Feedback
+        fields = ['id', 'enrollment_id', 'course_title', 'student_name', 'rating', 'comment', 'created_at']
+        read_only_fields = ['id', 'enrollment_id', 'course_title', 'student_name', 'created_at']
+        extra_kwargs = {
+            'comment': {'required': False, 'allow_blank': True},  # オプション化
+        }
+
+    def validate_rating(self, value):
+        try:
+            value = int(value)  # 文字列を整数に変換
+        except ValueError:
+            raise serializers.ValidationError('Rating must be an integer.')
+        
+        if value < 1 or value > 5:
+            raise serializers.ValidationError('Rating must be between 1 and 5.')
+        
+        return value
+

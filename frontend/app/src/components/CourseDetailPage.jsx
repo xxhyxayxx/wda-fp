@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { fetchCourses, deleteCourse } from '../features/course/courseSlice';
 import { fetchModules, deleteModule } from '../features/course/moduleSlice';
 import { fetchFiles } from '../features/course/fileSlice';
+import { fetchCourseStudents } from '../features/course/enrollmentSlice'; // 生徒取得アクションをインポート
 import NavBar from './NavBar';
 import styles from './styles/CourseDetailPage.module.css';
 
@@ -14,12 +15,11 @@ const CourseDetailPage = () => {
     const { courses } = useSelector((state) => state.course);
     const { modules } = useSelector((state) => state.module);
     const { files } = useSelector((state) => state.file);
+    const { courseStudents } = useSelector((state) => state.enrollment); // 生徒情報を取得
     const [course, setCourse] = useState(null);
     const [menuOpen, setMenuOpen] = useState(null);
     const [courseMenuOpen, setCourseMenuOpen] = useState(false);
-    const [fileDrawerOpen, setFileDrawerOpen] = useState({}); // モジュールごとのドロワー開閉状態を追跡
-
-    // ファイルフェッチ済みフラグ
+    const [fileDrawerOpen, setFileDrawerOpen] = useState({});
     const [hasFetchedFiles, setHasFetchedFiles] = useState(false);
 
     useEffect(() => {
@@ -40,53 +40,30 @@ const CourseDetailPage = () => {
         loadCourseDetails();
     }, [dispatch, courseId, courses]);
 
-    // modules が初期ロードされたら、一度だけファイルをフェッチする
     useEffect(() => {
         if (modules.length > 0 && !hasFetchedFiles) {
             const fetchAllFiles = async () => {
                 const filteredModuleIds = modules
                     .filter(module => module.course === parseInt(courseId))
                     .map(module => module.id);
-    
+
                 try {
                     for (const moduleId of filteredModuleIds) {
                         await dispatch(fetchFiles(moduleId)).unwrap();
                     }
-    
-                    // Redux の `files` ステートを確認
-                    console.log("Redux state - files after fetching:", files);
-    
                     setHasFetchedFiles(true);
                 } catch (error) {
                     console.error("Error fetching files:", error);
                 }
             };
-    
             fetchAllFiles();
         }
     }, [modules, hasFetchedFiles, dispatch, courseId]);
 
+    // コースに登録されている生徒をフェッチ
     useEffect(() => {
-        console.log("Files state:", files);
-    }, [files]);
-
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            // ドロップダウンメニューまたはトリガー以外をクリックした場合、メニューを閉じる
-            if (!event.target.closest(`.${styles.dropdownMenu}`) && !event.target.closest('.fa-ellipsis')) {
-                setMenuOpen(null);
-                setCourseMenuOpen(false);
-            }
-        };
-
-        // mousedown イベントリスナーを追加
-        document.addEventListener('mousedown', handleClickOutside);
-
-        // クリーンアップ
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
+        dispatch(fetchCourseStudents(courseId));
+    }, [dispatch, courseId]);
 
     const toggleCourseMenu = () => {
         setCourseMenuOpen(!courseMenuOpen);
@@ -99,7 +76,7 @@ const CourseDetailPage = () => {
     const toggleFileDrawer = (moduleId) => {
         setFileDrawerOpen(prevState => ({
             ...prevState,
-            [moduleId]: !prevState[moduleId] // モジュールごとの開閉状態をトグル
+            [moduleId]: !prevState[moduleId]
         }));
     };
 
@@ -124,8 +101,8 @@ const CourseDetailPage = () => {
     };
 
     const handleEditModule = (moduleId) => {
-        const moduleFiles = files[moduleId] || []; // モジュールに関連するファイルのみ
-        navigate(`/edit-module/${moduleId}`, { state: { moduleFiles } }); // ファイルをstateで渡す
+        const moduleFiles = files[moduleId] || [];
+        navigate(`/edit-module/${moduleId}`, { state: { moduleFiles } });
         setMenuOpen(null);
     };
 
@@ -168,11 +145,33 @@ const CourseDetailPage = () => {
                         </div>
                         <p className={styles.description}>{course.description}</p>
                         <p className={styles.category}>{course.category}</p>
+
+                        {/* コースに登録されている生徒の表示 */}
+                        <div className={styles.studentsSection}>
+                            <h3>Enrolled Students</h3>
+                            {courseStudents.length > 0 ? (
+                                <div className={styles.studentList}>
+                                    {courseStudents.map(student => (
+                                        <div key={student.id} className={styles.studentCard}>
+                                            <img
+                                                src={student.profile_image || 'default-profile.png'}
+                                                alt={student.name}
+                                                className={styles.studentImage}
+                                                onClick={() => navigate(`/courses/${courseId}/students/${student.id}`)} // 修正済み
+                                                style={{ cursor: 'pointer' }} // クリック感を出すためのスタイル
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p>No students enrolled in this course.</p>
+                            )}
+                        </div>
+
                         <div className={styles.modulesSection}>
-                        {filteredModules.length > 0 ? (
+                            {filteredModules.length > 0 ? (
                                 filteredModules.map((module) => {
                                     const moduleFiles = files[module.id] || [];
-                                    console.log(`Module ID: ${module.id}, Files:`, moduleFiles); // ここで挿入
                                     const isDrawerOpen = fileDrawerOpen[module.id];
                                     return (
                                         <div key={module.id} className={styles.moduleCard}>
@@ -226,9 +225,6 @@ const CourseDetailPage = () => {
                             ) : (
                                 <p>No modules available.</p>
                             )}
-
-
-
 
                             <button onClick={handleAddModule} className={styles.addModuleButton}>
                                 <i className="fa-solid fa-plus" style={{ marginRight: '5px' }}></i>Add Module
