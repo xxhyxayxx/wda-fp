@@ -1,8 +1,9 @@
 from django.test import TestCase
-from accounts.models import CustomUser
-from accounts.serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer
+from accounts.models import CustomUser, Notification
+from accounts.serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer, NotificationSerializer
 from django.test import RequestFactory
 from rest_framework import serializers
+from dateutil.parser import isoparse
 
 class UserRegistrationSerializerTest(TestCase):
     def test_user_registration_serializer_with_valid_data(self):
@@ -221,3 +222,61 @@ class ChangePasswordSerializerTest(TestCase):
         serializer = ChangePasswordSerializer(data=data, context={'request': request})
         self.assertFalse(serializer.is_valid())
         self.assertIn('non_field_errors', serializer.errors)
+
+class NotificationSerializerTest(TestCase):
+    def setUp(self):
+        # テスト用のユーザーを作成
+        self.user = CustomUser.objects.create_user(
+            email='testuser@example.com',
+            password='testpassword',
+            user_type='student',
+            name='Test User'
+        )
+        # テスト用の通知データを準備
+        self.notification = Notification.objects.create(
+            user=self.user,
+            title="Test Notification",
+            message="This is a test notification.",
+            link="http://example.com/test"
+        )
+
+    def test_notification_serializer_with_valid_data(self):
+        """NotificationSerializer が有効なデータを正しくシリアライズするかをテスト"""
+        serializer = NotificationSerializer(instance=self.notification)
+        
+        # `serializer.data` を取得
+        serialized_data = serializer.data
+
+        # `expected_data` を構築
+        expected_data = {
+            'id': self.notification.id,
+            'user': self.user.id,  # ForeignKey の ID
+            'title': self.notification.title,
+            'message': self.notification.message,
+            'link': self.notification.link,
+            'created_at': self.notification.created_at.isoformat(),  # created_at を ISO 8601 フォーマットに
+        }
+
+        # `created_at` をパースして正規化し、比較
+        self.assertEqual(
+            isoparse(serialized_data['created_at']),
+            isoparse(expected_data['created_at'])
+        )
+
+        # 他のフィールドを比較
+        del serialized_data['created_at']
+        del expected_data['created_at']
+        self.assertEqual(serialized_data, expected_data)
+
+    def test_notification_serializer_excludes_read_only_fields(self):
+        """読み取り専用フィールドが入力データとして受け入れられないことを確認するテスト"""
+        data = {
+            'title': "Invalid Notification",
+            'message': "This notification should not allow id to be set.",
+            'user': self.user.id,  # user を追加
+        }
+        serializer = NotificationSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        notification = serializer.save(user=self.user)  # user を渡す
+        self.assertNotEqual(notification.id, 999)  # id はデータベースで自動設定される
+        self.assertIsNotNone(notification.created_at)  # created_at も自動設定

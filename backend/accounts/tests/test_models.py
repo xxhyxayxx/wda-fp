@@ -1,5 +1,6 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from accounts.models import Notification
 
 CustomUser = get_user_model()
 
@@ -75,3 +76,63 @@ class CustomUserModelTest(TestCase):
         user.name = 'Updated User Name'
         user.save()
         self.assertEqual(user.name, 'Updated User Name')
+
+class NotificationModelTest(TestCase):
+    def setUp(self):
+        self.user = CustomUser.objects.create_user(
+            email='testuser@example.com',
+            password='testpassword123',
+            user_type='student'
+        )
+
+    def test_create_notification(self):
+        """通知が正常に作成されることをテスト"""
+        notification = Notification.objects.create(
+            user=self.user,
+            title="Test Notification",
+            message="This is a test notification.",
+            link="http://example.com/test"
+        )
+        self.assertEqual(notification.user, self.user)
+        self.assertEqual(notification.title, "Test Notification")
+        self.assertEqual(notification.message, "This is a test notification.")
+        self.assertEqual(notification.link, "http://example.com/test")
+        self.assertIsNotNone(notification.created_at)
+
+    def test_notification_without_link(self):
+        """リンクが設定されていない通知が正常に作成されることをテスト"""
+        notification = Notification.objects.create(
+            user=self.user,
+            title="Notification Without Link",
+            message="This notification has no link."
+        )
+        self.assertEqual(notification.user, self.user)
+        self.assertEqual(notification.title, "Notification Without Link")
+        self.assertEqual(notification.message, "This notification has no link.")
+        self.assertIsNone(notification.link)
+
+    def test_notification_str_method(self):
+        """Notification の __str__ メソッドが正しい形式を返すことをテスト"""
+        notification = Notification.objects.create(
+            user=self.user,
+            title="Test Notification",
+            message="This is a test notification."
+        )
+        self.assertEqual(str(notification), f"{self.user.email} - Test Notification")
+
+    def test_delete_user_deletes_notifications(self):
+        """ユーザーを削除したときに、そのユーザーの通知がすべて削除されることをテスト"""
+        Notification.objects.create(
+            user=self.user,
+            title="Test Notification 1",
+            message="This is the first test notification."
+        )
+        Notification.objects.create(
+            user=self.user,
+            title="Test Notification 2",
+            message="This is the second test notification."
+        )
+
+        self.assertEqual(Notification.objects.filter(user=self.user).count(), 2)
+        self.user.delete()
+        self.assertEqual(Notification.objects.filter(user=self.user).count(), 0)

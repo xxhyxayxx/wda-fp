@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
-from accounts.models import CustomUser
+from accounts.models import CustomUser, Notification
 from django.core.files.uploadedfile import SimpleUploadedFile
 import os
 
@@ -40,18 +40,18 @@ class UserProfileUpdateAPIViewTest(TestCase):
         self.user = CustomUser.objects.create_user(email='testuser@example.com', password='testpassword')
 
     def test_user_profile_update_successful(self):
-        """認証済みユーザーによるプロフィールの更新が成功するかをテスト"""
+        """user_type が読み取り専用であり、変更されないことを確認"""
         self.client.force_authenticate(user=self.user)
         url = reverse('user-profile-update')
         data = {
             'email': 'updateduser@example.com',
-            'user_type': 'teacher'
+            'user_type': 'teacher'  # 無効な変更
         }
         response = self.client.put(url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, 'updateduser@example.com')
-        self.assertEqual(self.user.user_type, 'teacher')
+        self.assertEqual(self.user.user_type, 'student')  # 変更されないことを確認
 
     def test_user_profile_update_with_empty_profile_image(self):
         """プロフィール画像を空にした場合、デフォルト画像に置き換わることをテスト"""
@@ -86,15 +86,16 @@ class UserProfileUpdateAPIViewTest(TestCase):
         self.assertIn('email', response.data)
 
     def test_user_profile_update_invalid_user_type(self):
-        """無効なユーザータイプを渡した場合のバリデーションテスト"""
+        """user_type が読み取り専用であることを確認するテスト"""
         self.client.force_authenticate(user=self.user)
         url = reverse('user-profile-update')
         data = {
-            'user_type': 'invalid-type'
+            'user_type': 'invalid-type'  # 無効なユーザータイプを渡す
         }
         response = self.client.put(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('user_type', response.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)  # 成功する
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.user_type, 'student')  # 変更されていないことを確認
 
     def test_user_profile_update_duplicate_email(self):
         """既に存在するメールアドレスを使用して更新しようとした場合のバリデーションテスト"""
@@ -206,3 +207,68 @@ class ChangePasswordAPIViewTest(TestCase):
         response = self.client.put(self.url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('non_field_errors', response.data)
+
+class NotificationListAPIViewTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = CustomUser.objects.create_user(
+            email='testuser@example.com',
+            password='testpassword'
+        )
+        self.url = reverse('notification-list')  # `notification-list` のエンドポイント
+
+        # テスト用の通知を作成
+        self.notification1 = Notification.objects.create(
+            user=self.user,
+            title="Notification 1",
+            message="This is the first notification.",
+            link="http://example.com/1"
+        )
+        self.notification2 = Notification.objects.create(
+            user=self.user,
+            title="Notification 2",
+            message="This is the second notification.",
+            link="http://example.com/2"
+        )
+
+        # 別のユーザーの通知
+        self.other_user = CustomUser.objects.create_user(
+            email='otheruser@example.com',
+            password='otherpassword'
+        )
+        Notification.objects.create(
+            user=self.other_user,
+            title="Other User Notification",
+            message="This should not be visible to the first user.",
+            link="http://example.com/other"
+        )
+
+    def test_notification_list_authenticated_user(self):
+        """認証済みユーザーが通知を正常に取得できるかをテスト"""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # 通知が2件のみ返されることを確認
+        self.assertEqual(len(response.data), 2)
+
+        # レスポンスデータの内容を検証
+        expected_titles = ["Notification 1", "Notification 2"]
+        actual_titles = [notification['title'] for notification in response.data]
+        self.assertEqual(set(actual_titles), set(expected_titles))
+
+    def test_notification_list_unauthenticated_user(self):
+        """未認証ユーザーが通知一覧を取得できないことをテスト"""
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_notification_order(self):
+        """通知が作成日の降順で返されることをテスト"""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.url)
+
+        # レスポンスデータが降順で並んでいることを確認
+        notifications = response.data
+        self.assertGreaterEqual(
+            notifications[0]['created_at'], notifications[1]['created_at']
+        )

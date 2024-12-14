@@ -1,11 +1,12 @@
 from rest_framework import generics, permissions
-from .models import CustomUser
-from .serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer
+from .models import CustomUser, Notification
+from .serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer, NotificationSerializer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
+from rest_framework.generics import ListAPIView
 
 
 class UserRegistrationAPIView(generics.CreateAPIView):
@@ -55,3 +56,14 @@ class ChangePasswordAPIView(generics.UpdateAPIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({'detail': 'Password updated successfully'}, status=status.HTTP_200_OK)
+
+class NotificationListAPIView(ListAPIView):
+    """
+    認証されたユーザーの通知一覧を返すビュー
+    """
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # ログインしているユーザーの通知のみ取得
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')

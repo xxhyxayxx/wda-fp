@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'drf_yasg',
     'courses',
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -146,3 +147,10 @@ REST_FRAMEWORK = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+ASGI_APPLICATION = "backend.asgi.application"
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}
