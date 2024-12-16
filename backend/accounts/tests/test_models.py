@@ -97,6 +97,8 @@ class NotificationModelTest(TestCase):
         self.assertEqual(notification.title, "Test Notification")
         self.assertEqual(notification.message, "This is a test notification.")
         self.assertEqual(notification.link, "http://example.com/test")
+        self.assertFalse(notification.is_read)  # is_read の初期値を確認
+        self.assertEqual(notification.event_type, "general")  # event_type のデフォルト値を確認
         self.assertIsNotNone(notification.created_at)
 
     def test_notification_without_link(self):
@@ -110,6 +112,28 @@ class NotificationModelTest(TestCase):
         self.assertEqual(notification.title, "Notification Without Link")
         self.assertEqual(notification.message, "This notification has no link.")
         self.assertIsNone(notification.link)
+
+    def test_notification_is_read_flag(self):
+        """is_read フラグが正常に変更されることをテスト"""
+        notification = Notification.objects.create(
+            user=self.user,
+            title="Read Notification",
+            message="This notification will be marked as read."
+        )
+        self.assertFalse(notification.is_read)  # 初期状態は未読
+        notification.is_read = True
+        notification.save()
+        self.assertTrue(notification.is_read)  # フラグが既読に変更されていることを確認
+
+    def test_notification_event_type(self):
+        """event_type フィールドが正しく設定されることをテスト"""
+        notification = Notification.objects.create(
+            user=self.user,
+            title="Custom Event Notification",
+            message="This notification has a custom event type.",
+            event_type="custom_event"
+        )
+        self.assertEqual(notification.event_type, "custom_event")  # カスタムの event_type を確認
 
     def test_notification_str_method(self):
         """Notification の __str__ メソッドが正しい形式を返すことをテスト"""

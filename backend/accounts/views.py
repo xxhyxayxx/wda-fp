@@ -4,10 +4,10 @@ from .serializers import UserRegistrationSerializer, UserProfileSerializer, Chan
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.generics import ListAPIView
-
+from .tasks import generate_notification
 
 class UserRegistrationAPIView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
@@ -67,3 +67,26 @@ class NotificationListAPIView(ListAPIView):
     def get_queryset(self):
         # ログインしているユーザーの通知のみ取得
         return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+
+class AdminBulkNotificationAPIView(APIView):
+    """管理者用一括通知API"""
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request):
+        title = request.data.get("title")
+        message = request.data.get("message")
+        link = request.data.get("link", "")
+        user_ids = request.data.get("user_ids", None)  # ユーザーIDのリスト (任意)
+
+        if not title or not message:
+            return Response({"error": "Title and message are required."}, status=400)
+
+        generate_notification.delay(
+            event_type="important_announcement",
+            title=title,
+            message=message,
+            link=link,
+            user_ids=user_ids
+        )
+
+        return Response({"detail": "Notification task has been created."}, status=200)

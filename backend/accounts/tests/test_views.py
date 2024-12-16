@@ -5,6 +5,7 @@ from rest_framework.test import APIClient
 from accounts.models import CustomUser, Notification
 from django.core.files.uploadedfile import SimpleUploadedFile
 import os
+from unittest.mock import patch
 
 class UserRegistrationAPIViewTest(TestCase):
     def setUp(self):
@@ -272,3 +273,98 @@ class NotificationListAPIViewTest(TestCase):
         self.assertGreaterEqual(
             notifications[0]['created_at'], notifications[1]['created_at']
         )
+
+class AdminBulkNotificationAPIViewTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        # 管理者ユーザーを作成
+        self.admin_user = CustomUser.objects.create_superuser(
+            email="admin@example.com",
+            password="adminpassword"
+        )
+
+        # 一般ユーザーを作成
+        self.user1 = CustomUser.objects.create_user(
+            email="user1@example.com",
+            password="user1password"
+        )
+        self.user2 = CustomUser.objects.create_user(
+            email="user2@example.com",
+            password="user2password"
+        )
+
+        # エンドポイントのURL
+        self.url = reverse('admin-bulk-notify')  # `admin-bulk-notify` はURLの名前
+
+    @patch("accounts.views.generate_notification.delay")
+    def test_bulk_notification_success(self, mock_generate_notification):
+        """管理者が一括通知を正常に作成できることをテスト"""
+        self.client.force_authenticate(user=self.admin_user)
+
+        data = {
+            "title": "Important Announcement",
+            "message": "This is a test announcement for all users.",
+            "link": "http://example.com",
+            "user_ids": [self.user1.id, self.user2.id]  # 特定ユーザー
+        }
+
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # タスクが正常に呼び出されたことを確認
+        mock_generate_notification.assert_called_once_with(
+            event_type="important_announcement",
+            title="Important Announcement",
+            message="This is a test announcement for all users.",
+            link="http://example.com",
+            user_ids=[self.user1.id, self.user2.id]
+        )
+
+    @patch("accounts.views.generate_notification.delay")
+    def test_bulk_notification_missing_title_or_message(self, mock_generate_notification):
+        """タイトルやメッセージが不足している場合のエラーハンドリングをテスト"""
+        self.client.force_authenticate(user=self.admin_user)
+
+        # タイトルがない場合
+        data_missing_title = {
+            "message": "This is a test announcement.",
+            "link": "http://example.com"
+        }
+        response = self.client.post(self.url, data_missing_title, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
+        # メッセージがない場合
+        data_missing_message = {
+            "title": "Missing Message Test",
+            "link": "http://example.com"
+        }
+        response = self.client.post(self.url, data_missing_message, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
+        # タスクが呼び出されていないことを確認
+        mock_generate_notification.assert_not_called()
+
+    def test_bulk_notification_permission_denied(self):
+        """管理者以外がエンドポイントにアクセスできないことをテスト"""
+        self.client.force_authenticate(user=self.user1)  # 一般ユーザーで認証
+
+        data = {
+            "title": "Unauthorized Access Test",
+            "message": "This test should fail.",
+            "link": "http://example.com"
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_bulk_notification_unauthenticated(self):
+        """未認証ユーザーがエンドポイントにアクセスできないことをテスト"""
+        data = {
+            "title": "Unauthenticated Access Test",
+            "message": "This test should fail.",
+            "link": "http://example.com"
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

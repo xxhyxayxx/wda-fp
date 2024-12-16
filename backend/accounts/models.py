@@ -56,6 +56,8 @@ class Notification(models.Model):
     title = models.CharField(max_length=255)
     message = models.TextField()
     link = models.URLField(blank=True, null=True)  # 必要ならリンクを設定
+    is_read = models.BooleanField(default=False)  # 既読フラグを追加
+    event_type = models.CharField(max_length=50, default="general")  # イベントタイプ
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

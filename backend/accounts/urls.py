@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import UserRegistrationAPIView, UserProfileUpdateAPIView, LogoutAPIView, ChangePasswordAPIView, NotificationListAPIView
+from .views import UserRegistrationAPIView, UserProfileUpdateAPIView, LogoutAPIView, ChangePasswordAPIView, NotificationListAPIView, AdminBulkNotificationAPIView
 from rest_framework.authtoken.views import obtain_auth_token
 
 urlpatterns = [
@@ -9,4 +9,5 @@ urlpatterns = [
     path('logout/', LogoutAPIView.as_view(), name='logout'),
     path('change-password/', ChangePasswordAPIView.as_view(), name='change-password'),
     path('notifications/', NotificationListAPIView.as_view(), name='notification-list'),  # 通知一覧エンドポイント
+    path('notifications/admin-bulk/', AdminBulkNotificationAPIView.as_view(), name='admin-bulk-notify'),
 ]

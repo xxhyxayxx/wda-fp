@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'drf_yasg',
     'courses',
     'channels',
+    'django_celery_results',
 ]
 
 MIDDLEWARE = [
@@ -154,3 +155,16 @@ CHANNEL_LAYERS = {
         "BACKEND": "channels.layers.InMemoryChannelLayer",
     },
 }
+
+# Redisをキューブローカーとして指定
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+
+# タスク結果を保存するための設定（django-celery-resultsを使用）
+CELERY_RESULT_BACKEND = 'django-db'
+
+# タスクのデフォルトシリアライザー
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
