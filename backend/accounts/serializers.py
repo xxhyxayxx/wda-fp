@@ -54,5 +54,5 @@ class NotificationSerializer(serializers.ModelSerializer):
     """Notification モデルのシリアライザー"""
     class Meta:
         model = Notification
-        fields = ('id', 'user', 'title', 'message', 'link', 'is_read', 'event_type', 'created_at')
+        fields = ('id', 'user', 'title', 'message', 'link', 'event_type', 'created_at')
         read_only_fields = ('id', 'user', 'created_at')  # is_read を削除

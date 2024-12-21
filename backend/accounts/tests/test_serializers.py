@@ -251,8 +251,7 @@ class NotificationSerializerTest(TestCase):
             'title': self.notification.title,
             'message': self.notification.message,
             'link': self.notification.link,
-            'is_read': self.notification.is_read,  # is_read フィールドを追加
-            'event_type': self.notification.event_type,  # event_type フィールドを追加
+            'event_type': self.notification.event_type,  # event_type フィールドは残す
             'created_at': self.notification.created_at.isoformat(),  # ISOフォーマットで比較
         }
 
@@ -266,19 +265,6 @@ class NotificationSerializerTest(TestCase):
         del serialized_data['created_at']
         del expected_data['created_at']
         self.assertEqual(serialized_data, expected_data)
-
-    def test_notification_serializer_with_partial_update(self):
-        """部分更新時に正しく動作するかをテスト"""
-        data = {
-            'is_read': True
-        }
-        serializer = NotificationSerializer(instance=self.notification, data=data, partial=True)
-        self.assertTrue(serializer.is_valid())
-        updated_notification = serializer.save()
-
-        self.notification.refresh_from_db()  # データベースから更新後のデータを取得
-        self.assertTrue(self.notification.is_read)  # is_read が更新されていることを確認
-        self.assertEqual(updated_notification.title, self.notification.title)  # 他のフィールドは変更なし
 
     def test_notification_serializer_excludes_read_only_fields(self):
         """読み取り専用フィールドが入力データとして受け入れられないことを確認するテスト"""
