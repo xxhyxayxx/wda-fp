@@ -16,5 +16,6 @@ export const store = configureStore({
     enrollment: enrollmentReducer, // enrollment スライス
     moduleProgress: moduleProgressReducer, // moduleProgress スライス
     feedback: feedbackReducer,
+    notifications: notificationReducer,
   },
 });
