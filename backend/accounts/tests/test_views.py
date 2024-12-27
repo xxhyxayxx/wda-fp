@@ -409,3 +409,74 @@ class MarkNotificationAsReadAPIViewTest(TestCase):
         self.client.force_authenticate(user=other_user)
         response = self.client.post(self.url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)  # 通知が見つからないと返される
+
+class ReleaseNewCourseAPIViewTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+        # 管理者ユーザーを作成
+        self.admin_user = CustomUser.objects.create_superuser(
+            email="admin@example.com",
+            password="adminpassword"
+        )
+
+        # 一般ユーザーを作成
+        self.user1 = CustomUser.objects.create_user(
+            email="user1@example.com",
+            password="user1password"
+        )
+        self.user2 = CustomUser.objects.create_user(
+            email="user2@example.com",
+            password="user2password"
+        )
+
+        # エンドポイントのURL
+        self.url = reverse('release-new-course')  # `release-new-course` はURLの名前
+
+    @patch("accounts.views.generate_notification.delay")
+    def test_release_new_course_success(self, mock_generate_notification):
+        """管理者が新しいコースを正常にリリースできることをテスト"""
+        self.client.force_authenticate(user=self.admin_user)
+
+        data = {
+            "course_name": "Advanced Python"
+        }
+
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # タスクが正常に呼び出されたことを確認
+        mock_generate_notification.assert_called_once_with(
+            event_type="course_release",
+            title="New Course Released",
+            message="The course 'Advanced Python' has just been released!",
+            link="/courses/Advanced Python/",
+        )
+
+    def test_release_new_course_missing_course_name(self):
+        """コース名が指定されていない場合のエラーハンドリングをテスト"""
+        self.client.force_authenticate(user=self.admin_user)
+
+        data = {}  # コース名がないデータ
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+        self.assertEqual(response.data["error"], "Course name is required.")
+
+    def test_release_new_course_permission_denied(self):
+        """一般ユーザーがエンドポイントにアクセスできないことをテスト"""
+        self.client.force_authenticate(user=self.user1)  # 一般ユーザーで認証
+
+        data = {
+            "course_name": "Unauthorized Access Test"
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_release_new_course_unauthenticated(self):
+        """未認証ユーザーがエンドポイントにアクセスできないことをテスト"""
+        data = {
+            "course_name": "Unauthenticated Access Test"
+        }
+        response = self.client.post(self.url, data, format="json")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

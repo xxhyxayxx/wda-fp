@@ -1,4 +1,6 @@
 from celery import shared_task
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 @shared_task
 def save_notification(user_id, title, message, link=None, event_type="general"):
@@ -28,30 +30,38 @@ def save_notification(user_id, title, message, link=None, event_type="general"):
 
 @shared_task
 def generate_notification(event_type, title, message, link=None, user_ids=None):
-    """
-    特定のイベントに基づいて通知を生成。
-    :param event_type: 通知の種類 (例: "course_release")
-    :param title: 通知タイトル
-    :param message: 通知メッセージ
-    :param link: 通知リンク (オプション)
-    :param user_ids: 対象ユーザーのIDリスト (Noneの場合は全ユーザー)
-    """
-    # 遅延インポートを使用して循環参照を防ぐ
     from .models import Notification, CustomUser
 
-    # ユーザーをフィルタリング
     if user_ids:
         users = CustomUser.objects.filter(id__in=user_ids)
     else:
         users = CustomUser.objects.all()
 
-    # 通知を作成
+    notifications = []
+    channel_layer = get_channel_layer()
+
     for user in users:
-        Notification.objects.create(
+        notification = Notification.objects.create(
             user=user,
             title=title,
             message=message,
             link=link,
             event_type=event_type,
         )
+        notifications.append(notification)
+
+        # WebSocketでリアルタイム通知を送信
+        async_to_sync(channel_layer.group_send)(
+            f"user_{user.id}",
+            {
+                "type": "send_notification",
+                "notification": {
+                    "title": title,
+                    "message": message,
+                    "link": link,
+                    "event_type": event_type,
+                },
+            }
+        )
+
     return f"Notifications created for {len(users)} users."

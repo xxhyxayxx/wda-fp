@@ -105,3 +105,21 @@ class MarkNotificationAsReadAPIView(APIView):
             return Response({"detail": "Notification marked as read."}, status=200)
         except Notification.DoesNotExist:
             return Response({"error": "Notification not found."}, status=404)
+
+class ReleaseNewCourseAPIView(APIView):
+    permission_classes = [IsAdminUser]  # 管理者のみがアクセス可能
+
+    def post(self, request):
+        course_name = request.data.get("course_name")
+        if not course_name:
+            return Response({"error": "Course name is required."}, status=400)
+
+        # タスクをキューに追加
+        generate_notification.delay(
+            event_type="course_release",  # イベントタイプ
+            title="New Course Released",
+            message=f"The course '{course_name}' has just been released!",
+            link=f"/courses/{course_name}/",  # 必要に応じてリンクを変更
+        )
+
+        return Response({"detail": "Course release notification task created."}, status=200)
