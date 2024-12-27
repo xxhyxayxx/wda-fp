@@ -99,6 +99,22 @@ class NotificationModelTest(TestCase):
         self.assertEqual(notification.link, "http://example.com/test")
         self.assertEqual(notification.event_type, "general")  # event_type のデフォルト値を確認
         self.assertIsNotNone(notification.created_at)
+        self.assertFalse(notification.is_read)  # is_read のデフォルト値を確認
+
+    def test_mark_notification_as_read(self):
+        """通知の既読状態を更新することをテスト"""
+        notification = Notification.objects.create(
+            user=self.user,
+            title="Test Notification",
+            message="This is a test notification."
+        )
+        self.assertFalse(notification.is_read)  # 初期値は False のはず
+
+        notification.is_read = True
+        notification.save()
+
+        updated_notification = Notification.objects.get(id=notification.id)
+        self.assertTrue(updated_notification.is_read)  # 既読状態が更新されていることを確認
 
     def test_notification_without_link(self):
         """リンクが設定されていない通知が正常に作成されることをテスト"""
@@ -111,6 +127,7 @@ class NotificationModelTest(TestCase):
         self.assertEqual(notification.title, "Notification Without Link")
         self.assertEqual(notification.message, "This notification has no link.")
         self.assertIsNone(notification.link)
+        self.assertFalse(notification.is_read)  # 初期値の確認
 
     def test_notification_event_type(self):
         """event_type フィールドが正しく設定されることをテスト"""
@@ -121,6 +138,7 @@ class NotificationModelTest(TestCase):
             event_type="custom_event"
         )
         self.assertEqual(notification.event_type, "custom_event")  # カスタムの event_type を確認
+        self.assertFalse(notification.is_read)  # 初期値の確認
 
     def test_notification_str_method(self):
         """Notification の __str__ メソッドが正しい形式を返すことをテスト"""
@@ -147,3 +165,24 @@ class NotificationModelTest(TestCase):
         self.assertEqual(Notification.objects.filter(user=self.user).count(), 2)
         self.user.delete()
         self.assertEqual(Notification.objects.filter(user=self.user).count(), 0)
+
+    def test_mark_all_notifications_as_read(self):
+        """ユーザーのすべての通知を既読にすることをテスト"""
+        Notification.objects.create(
+            user=self.user,
+            title="Test Notification 1",
+            message="This is the first test notification."
+        )
+        Notification.objects.create(
+            user=self.user,
+            title="Test Notification 2",
+            message="This is the second test notification."
+        )
+
+        self.assertEqual(Notification.objects.filter(user=self.user, is_read=False).count(), 2)
+
+        # 全ての通知を既読にする
+        Notification.objects.filter(user=self.user).update(is_read=True)
+
+        self.assertEqual(Notification.objects.filter(user=self.user, is_read=False).count(), 0)
+        self.assertEqual(Notification.objects.filter(user=self.user, is_read=True).count(), 2)

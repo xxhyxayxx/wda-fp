@@ -36,6 +36,7 @@ schema_view = get_schema_view(
 )
 
 
+# backend/urls.py
 urlpatterns = [
     path("admin/", admin.site.urls),
     path('accounts/', include('accounts.urls')),

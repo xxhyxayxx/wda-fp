@@ -22,6 +22,7 @@ import EditModulePage from './components/EditModulePage';     // モジュール
 import StudentCourses from './components/StudentCourses';
 import StudentCourseDetailPage from './components/StudentCourseDetailPage'; // 新しいコンポーネントをインポート
 import StudentDetailPage from './components/StudentDetailPage';
+import NotificationPage from './components/NotificationPage';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import 'normalize.css';
 
@@ -136,6 +137,15 @@ createRoot(document.getElementById('root')).render(
               <TeacherRoute> {/* 教師専用ルート */}
                 <StudentDetailPage />
               </TeacherRoute>
+            }
+          />
+          {/* 通知ページ */}
+          <Route
+            path="/notifications"
+            element={
+              <PrivateRoute>
+                <NotificationPage />
+              </PrivateRoute>
             }
           />
         </Routes>

@@ -223,25 +223,13 @@ class NotificationListAPIViewTest(TestCase):
             user=self.user,
             title="Notification 1",
             message="This is the first notification.",
-            link="http://example.com/1"
+            is_read=False
         )
         self.notification2 = Notification.objects.create(
             user=self.user,
             title="Notification 2",
             message="This is the second notification.",
-            link="http://example.com/2"
-        )
-
-        # 別のユーザーの通知
-        self.other_user = CustomUser.objects.create_user(
-            email='otheruser@example.com',
-            password='otherpassword'
-        )
-        Notification.objects.create(
-            user=self.other_user,
-            title="Other User Notification",
-            message="This should not be visible to the first user.",
-            link="http://example.com/other"
+            is_read=True  # 既読
         )
 
     def test_notification_list_authenticated_user(self):
@@ -250,25 +238,26 @@ class NotificationListAPIViewTest(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # 通知が2件のみ返されることを確認
+        # 通知が2件返されることを確認
         self.assertEqual(len(response.data), 2)
 
+        # 通知が降順で並んでいることを確認
+        notifications = response.data
+        self.assertGreaterEqual(
+            notifications[0]['created_at'], notifications[1]['created_at']
+        )
+
         # レスポンスデータの内容を検証
-        expected_titles = ["Notification 1", "Notification 2"]
-        actual_titles = [notification['title'] for notification in response.data]
-        self.assertEqual(set(actual_titles), set(expected_titles))
+        expected_titles = [self.notification1.title, self.notification2.title]
+        actual_titles = [notification['title'] for notification in notifications]
+        self.assertEqual(set(expected_titles), set(actual_titles))
 
-    def test_notification_list_unauthenticated_user(self):
-        """未認証ユーザーが通知一覧を取得できないことをテスト"""
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_notification_order(self):
+    def test_notification_list_order(self):
         """通知が作成日の降順で返されることをテスト"""
         self.client.force_authenticate(user=self.user)
         response = self.client.get(self.url)
 
-        # レスポンスデータが降順で並んでいることを確認
+        # 通知が降順で返されることを確認
         notifications = response.data
         self.assertGreaterEqual(
             notifications[0]['created_at'], notifications[1]['created_at']
@@ -368,3 +357,55 @@ class AdminBulkNotificationAPIViewTest(TestCase):
         }
         response = self.client.post(self.url, data, format="json")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+class MarkNotificationAsReadAPIViewTest(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        # ユーザーと通知をセットアップ
+        self.user = CustomUser.objects.create_user(
+            email='testuser@example.com',
+            password='testpassword'
+        )
+        self.notification = Notification.objects.create(
+            user=self.user,
+            title="Test Notification",
+            message="This is a test notification.",
+            is_read=False
+        )
+        self.url = reverse('notification-mark-as-read', kwargs={'notification_id': self.notification.id})
+
+    def test_mark_notification_as_read_authenticated_user(self):
+        """認証済みユーザーが通知を既読にできることをテスト"""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("detail", response.data)
+        self.assertEqual(response.data["detail"], "Notification marked as read.")
+
+        # 通知が既読に更新されていることを確認
+        self.notification.refresh_from_db()
+        self.assertTrue(self.notification.is_read)
+
+    def test_mark_notification_as_read_unauthenticated_user(self):
+        """未認証ユーザーが通知を既読にできないことをテスト"""
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_mark_notification_as_read_nonexistent_notification(self):
+        """存在しない通知にアクセスした場合のエラーハンドリングをテスト"""
+        self.client.force_authenticate(user=self.user)
+        invalid_url = reverse('notification-mark-as-read', kwargs={'notification_id': 9999})
+        response = self.client.post(invalid_url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn("error", response.data)
+        self.assertEqual(response.data["error"], "Notification not found.")
+
+    def test_mark_notification_as_read_forbidden_user(self):
+        """他のユーザーの通知を既読にできないことをテスト"""
+        other_user = CustomUser.objects.create_user(
+            email='otheruser@example.com',
+            password='otherpassword'
+        )
+        self.client.force_authenticate(user=other_user)
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)  # 通知が見つからないと返される

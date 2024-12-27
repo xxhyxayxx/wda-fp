@@ -23,12 +23,6 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-gbf-7o_d=76+g0^x4u1^ku+4g&&yu1!k*ff7mpt$ms(d^(yi!x"
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -82,11 +76,11 @@ WSGI_APPLICATION = "backend.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, "db.sqlite3"),
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 }
 
@@ -157,7 +151,7 @@ CHANNEL_LAYERS = {
 }
 
 # Redisをキューブローカーとして指定
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = 'redis://redis:6379/0'
 
 # タスク結果を保存するための設定（django-celery-resultsを使用）
 CELERY_RESULT_BACKEND = 'django-db'
@@ -168,3 +162,5 @@ CELERY_TASK_SERIALIZER = 'json'
 
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
+# ALLOWED_HOSTS を環境変数から取得
+ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "localhost").split(",")

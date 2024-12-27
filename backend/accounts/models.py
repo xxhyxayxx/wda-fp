@@ -58,6 +58,7 @@ class Notification(models.Model):
     link = models.URLField(blank=True, null=True)  # 必要ならリンクを設定
     event_type = models.CharField(max_length=50, default="general")  # イベントタイプ
     created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)  # 既読状態を管理
 
     def __str__(self):
         return f"{self.user.email} - {self.title}"

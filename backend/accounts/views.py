@@ -90,3 +90,18 @@ class AdminBulkNotificationAPIView(APIView):
         )
 
         return Response({"detail": "Notification task has been created."}, status=200)
+
+class MarkNotificationAsReadAPIView(APIView):
+    """
+    特定の通知を既読にするAPI
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, notification_id):
+        try:
+            notification = Notification.objects.get(id=notification_id, user=request.user)
+            notification.is_read = True
+            notification.save(update_fields=['is_read'])
+            return Response({"detail": "Notification marked as read."}, status=200)
+        except Notification.DoesNotExist:
+            return Response({"error": "Notification not found."}, status=404)

@@ -6,6 +6,10 @@ import LogoutButton from './LogoutButton';
 
 const NavBar = () => {
     const { userInfo } = useSelector((state) => state.user);
+    const { notifications } = useSelector((state) => state.notifications);
+
+    // 未読通知があるかを確認
+    const hasUnreadNotifications = notifications.some((notification) => !notification.is_read);
 
     return (
         <nav className={styles.navMenu}>
@@ -29,6 +33,13 @@ const NavBar = () => {
                         </Link>
                     </li>
                 )}
+                {/* 通知リンク */}
+                <li className={styles.notificationLink}>
+                    <Link to="/notifications" className={styles.navLink}>
+                        Notifications
+                        {hasUnreadNotifications && <span className={styles.unreadIndicator}></span>}
+                    </Link>
+                </li>
                 {/* プロフィールリンク */}
                 <li>
                     <Link to="/account" className={styles.profileLink}>
