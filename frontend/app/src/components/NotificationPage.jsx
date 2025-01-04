@@ -7,6 +7,7 @@ import {
 } from '../features/notification/notificationSlice';
 import NotificationService from '../utils/notificationService'; // NotificationServiceを直接インポート
 import styles from './styles/NotificationPage.module.css';
+import { Link } from 'react-router-dom';
 
 const NotificationPage = () => {
     const dispatch = useDispatch();
@@ -63,13 +64,13 @@ const NotificationPage = () => {
                                 {notifications.map((notification) => (
                                     <li
                                         key={notification.id}
-                                        className={`${styles.notificationItem} ${
-                                            notification.is_read ? styles.read : styles.unread
-                                        }`}
-                                        onClick={() => handleNotificationClick(notification.id)}
+                                        className={`${styles.notificationItem} ${notification.is_read ? styles.read : styles.unread
+                                            }`}
                                     >
-                                        <p>{notification.message}</p>
-                                        <span>{new Date(notification.created_at).toLocaleString()}</span>
+                                        <Link to={`/notifications/${notification.id}`} className={styles.notificationLink}>
+                                            <p>{notification.title}</p> {/* タイトルを表示 */}
+                                            <span>{new Date(notification.created_at).toLocaleString()}</span>
+                                        </Link>
                                     </li>
                                 ))}
                             </ul>

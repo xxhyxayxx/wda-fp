@@ -25,6 +25,7 @@ import StudentDetailPage from './components/StudentDetailPage';
 import NotificationPage from './components/NotificationPage';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import 'normalize.css';
+import NotificationDetailPage from './components/NotificationDetailPage';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -148,6 +149,15 @@ createRoot(document.getElementById('root')).render(
               </PrivateRoute>
             }
           />
+          <Route
+            path="/notifications/:id"
+            element={
+              <PrivateRoute>
+                <NotificationDetailPage />
+              </PrivateRoute>
+            }
+          />
+
         </Routes>
       </Router>
     </Provider>
