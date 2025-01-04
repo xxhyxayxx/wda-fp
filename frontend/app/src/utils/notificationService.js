@@ -1,14 +1,16 @@
+import axios from 'axios';
+
+const websocketURL = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8000/accounts/ws/notifications/';
+
 class NotificationService {
-    constructor(url, onMessageCallback) {
-        this.url = url; // WebSocketサーバーのURL
+    constructor(onMessageCallback) {
         this.onMessageCallback = onMessageCallback; // メッセージ受信時のコールバック関数
         this.socket = null; // WebSocketインスタンス
     }
 
     connect() {
-        // WebSocket接続を確立
         if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-            this.socket = new WebSocket(this.url);
+            this.socket = new WebSocket(websocketURL);
 
             this.socket.onopen = () => {
                 console.log('WebSocket connection established.');
@@ -18,7 +20,7 @@ class NotificationService {
                 const data = JSON.parse(event.data);
                 console.log('New notification received:', data);
                 if (this.onMessageCallback) {
-                    this.onMessageCallback(data); // 通知をコールバック経由で処理
+                    this.onMessageCallback(data);
                 }
             };
 
@@ -33,7 +35,6 @@ class NotificationService {
     }
 
     disconnect() {
-        // WebSocket接続を切断
         if (this.socket) {
             this.socket.close();
             console.log('WebSocket connection manually closed.');
@@ -42,7 +43,6 @@ class NotificationService {
     }
 
     sendMessage(message) {
-        // WebSocket経由でメッセージを送信
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
             this.socket.send(JSON.stringify(message));
         } else {

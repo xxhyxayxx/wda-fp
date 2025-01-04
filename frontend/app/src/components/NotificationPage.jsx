@@ -2,11 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
     fetchNotifications,
-    initializeWebSocket,
+    addNotification,
     closeWebSocket,
-    markNotificationAsRead,
-    markAsReadLocally,
 } from '../features/notification/notificationSlice';
+import NotificationService from '../utils/notificationService'; // NotificationServiceを直接インポート
 import styles from './styles/NotificationPage.module.css';
 
 const NotificationPage = () => {
@@ -14,16 +13,19 @@ const NotificationPage = () => {
     const { notifications, status, error } = useSelector((state) => state.notifications);
     const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
 
-    // Fetch notifications when component mounts
     useEffect(() => {
         if (status === 'idle') {
             dispatch(fetchNotifications());
         }
-        dispatch(initializeWebSocket({ url: 'ws://localhost:8000/ws/notifications/' }));
 
-        // Cleanup WebSocket on component unmount
+        // WebSocket初期化
+        const notificationService = new NotificationService((notification) => {
+            dispatch(addNotification(notification)); // Reduxのアクションで通知を追加
+        });
+        notificationService.connect();
+
         return () => {
-            dispatch(closeWebSocket());
+            notificationService.disconnect(); // クリーンアップ時にWebSocketを閉じる
         };
     }, [dispatch, status]);
 
@@ -67,7 +69,7 @@ const NotificationPage = () => {
                                         onClick={() => handleNotificationClick(notification.id)}
                                     >
                                         <p>{notification.message}</p>
-                                        <span>{new Date(notification.timestamp).toLocaleString()}</span>
+                                        <span>{new Date(notification.created_at).toLocaleString()}</span>
                                     </li>
                                 ))}
                             </ul>

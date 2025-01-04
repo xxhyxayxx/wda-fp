@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // 環境変数からAPIのベースURLを取得
 const apiClient = axios.create({
-  baseURL: process.env.VITE_API_URL || 'http://127.0.0.1:8000/', // デフォルト値を設定
+  baseURL: import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/', // デフォルト値を設定
 });
 
 apiClient.interceptors.response.use(

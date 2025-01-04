@@ -2,11 +2,12 @@ services:
   backend:
     build:
       context: ./backend
+    command: daphne -b 0.0.0.0 -p 8000 backend.asgi:application
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
-      - ./media:/app/media
+      - ./backend/media:/app/media
     env_file:
       - .env
     depends_on:
@@ -38,8 +39,6 @@ services:
     volumes:
       - ./frontend/app:/app:delegated  # 必要な部分だけマウント
       - node_modules:/app/node_modules  # node_modulesはDockerのボリュームで管理
-    environment:
-      - NODE_ENV=development
     env_file:
       - ./frontend/app/.env
 

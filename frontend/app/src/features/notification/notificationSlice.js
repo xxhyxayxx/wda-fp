@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import apiClient from '../../utils/apiClient';
-import NotificationService from '../../utils/notificationService' // サービスをインポート
+import NotificationService from '../../utils/notificationService'; // サービスをインポート
 
 export let notificationService = null;
 
@@ -41,21 +41,19 @@ const notificationSlice = createSlice({
     initialState,
     reducers: {
         addNotification: (state, action) => {
-            state.notifications.unshift(action.payload);
+            state.notifications.unshift(action.payload); // 安全に通知を追加
         },
         markAsReadLocally: (state, action) => {
-          const notificationId = action.payload;
-          const notification = state.notifications.find((n) => n.id === notificationId);
-          if (notification) {
-              notification.is_read = true;
-          }
+            const notificationId = action.payload;
+            const notification = state.notifications.find((n) => n.id === notificationId);
+            if (notification) {
+                notification.is_read = true;
+            }
         },
         initializeWebSocket: (state, action) => {
-            const { url } = action.payload;
             if (!notificationService) {
-                notificationService = new NotificationService(url, (notification) => {
-                    // 通知をReduxストアに追加
-                    state.notifications.unshift(notification);
+                notificationService = new NotificationService((notification) => {
+                    action.dispatch(addNotification(notification)); // Reduxアクションを利用
                 });
                 notificationService.connect();
             }
@@ -99,6 +97,7 @@ export const { addNotification, markAsReadLocally, initializeWebSocket, closeWeb
 // Export reducer
 export default notificationSlice.reducer;
 
+// Export a helper function to reset the notification service
 export const resetNotificationService = () => {
-  notificationService = null;
+    notificationService = null;
 };

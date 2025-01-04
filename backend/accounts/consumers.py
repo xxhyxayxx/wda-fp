@@ -1,7 +1,5 @@
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
-from .models import Notification
-from .serializers import NotificationSerializer
 from asgiref.sync import sync_to_async
 from django.contrib.auth.models import AnonymousUser
 
@@ -32,6 +30,9 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         """
         クライアントからのメッセージを受信し、通知を登録する
         """
+        from .models import Notification  # 必要なときにインポート
+        from .serializers import NotificationSerializer  # 必要なときにインポート
+
         data = json.loads(text_data)
         title = data.get('title')
         message = data.get('message')
