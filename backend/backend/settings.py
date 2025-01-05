@@ -176,3 +176,16 @@ CELERY_RESULT_BACKEND = 'django-db'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+
+# テスト環境用設定
+if os.environ.get('TESTING', 'False') == 'True':
+    CELERY_TASK_ALWAYS_EAGER = True  # 非同期タスクを同期的に実行
+    CELERY_TASK_EAGER_PROPAGATES = True  # エラーを即座に伝播
+
+# TESTING=True python manage.py test courses.tests.test_views
+if os.environ.get('TESTING', 'False') == 'True':
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        },
+    }

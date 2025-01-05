@@ -8,8 +8,8 @@ const NavBar = () => {
     const { userInfo } = useSelector((state) => state.user);
     const { notifications } = useSelector((state) => state.notifications);
 
-    // 未読通知があるかを確認
-    const hasUnreadNotifications = notifications.some((notification) => !notification.is_read);
+    // 未読通知の数を計算
+    const unreadCount = notifications.filter((notification) => !notification.is_read).length;
 
     return (
         <nav className={styles.navMenu}>
@@ -37,7 +37,11 @@ const NavBar = () => {
                 <li className={styles.notificationLink}>
                     <Link to="/notifications" className={styles.navLink}>
                         Notifications
-                        {hasUnreadNotifications && <span className={styles.unreadIndicator}></span>}
+                        {unreadCount > 0 && (
+                            <span className={styles.unreadIndicator}>
+                                {unreadCount}
+                            </span>
+                        )}
                     </Link>
                 </li>
                 {/* プロフィールリンク */}
