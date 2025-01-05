@@ -13,7 +13,6 @@ const CreateModulePage = () => {
 
   return (
     <div>
-      <NavBar />
       <div>
         <ModuleForm courseId={courseId} onClose={() => navigate('/modules')} />  {/* courseId を ModuleForm に渡す */}
       </div>

@@ -67,7 +67,6 @@ const Courses = () => {
 
     return (
         <div>
-            <NavBar />
             <div className={styles.coursesContainer}>
                 {loading ? (
                     <p>Loading courses...</p>
