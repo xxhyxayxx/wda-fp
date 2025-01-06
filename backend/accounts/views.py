@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.generics import ListAPIView
 from .tasks import generate_notification
+from django.db.models import Q
 
 class UserRegistrationAPIView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
@@ -123,3 +124,20 @@ class ReleaseNewCourseAPIView(APIView):
         )
 
         return Response({"detail": "Course release notification task created."}, status=200)
+
+class UserSearchAPIView(ListAPIView):
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        query = self.request.query_params.get('q', '').strip()
+
+        if not query:  # クエリが空の場合は何も返さない
+            return CustomUser.objects.none()
+
+        queryset = CustomUser.objects.filter(
+            Q(name__icontains=query) | Q(email__icontains=query)
+        ).distinct()
+
+        # 最大10件のみ返す
+        return queryset.only('id', 'name', 'email')[:10]
