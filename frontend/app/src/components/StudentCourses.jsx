@@ -52,7 +52,6 @@ const StudentCourses = () => {
 
     return (
         <div className={styles.pageContainer}>
-            <NavBar />
             <div className={styles.contentContainer}>
                 <ul className={styles.courseList}>
                     {courses

@@ -121,7 +121,6 @@ const CourseDetailPage = () => {
 
     return (
         <div>
-            <NavBar />
             <div className={styles.courseDetailContainer}>
                 {course ? (
                     <>

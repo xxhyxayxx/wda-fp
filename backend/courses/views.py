@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions, status
 from .models import Course, Module, File, Module, ModuleProgress, Enrollment, Feedback
 from .serializers import CourseSerializer, ModuleSerializer, FileSerializer, ModuleProgressSerializer, EnrollmentSerializer, FeedbackSerializer
+from accounts.serializers import NotificationSerializer
 from .permissions import IsTeacher
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -13,6 +14,9 @@ from django.shortcuts import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal
 from django.core.exceptions import PermissionDenied
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from accounts.models import Notification
 
 # コース作成、更新、削除、一覧ビュー
 
@@ -39,6 +43,48 @@ class ModuleCreateAPIView(generics.CreateAPIView):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
     permission_classes = [IsTeacher]
+
+    def perform_create(self, serializer):
+        # モジュールを保存
+        module = serializer.save(created_by=self.request.user)
+        print(f"Module created: {module.title}")  # デバッグログ
+
+        # モジュールが属するコースを取得
+        course = module.course
+        print(f"Module belongs to course: {course.title}")  # デバッグログ
+
+        # コースに登録している生徒を取得
+        enrolled_students = Enrollment.objects.filter(course=course).values_list('student', flat=True)
+        print(f"Enrolled students: {list(enrolled_students)}")  # デバッグログ
+
+        # 通知タイトルとメッセージ
+        title = "New Module Added"
+        message = f"A new module '{module.title}' has been added to the course '{course.title}'."
+
+        # 通知を作成し、WebSocket通知を送信
+        channel_layer = get_channel_layer()
+        for student_id in enrolled_students:
+            try:
+                # データベースに通知を保存
+                notification = Notification.objects.create(
+                    user_id=student_id,
+                    title=title,
+                    message=message,
+                    link=f"/student-courses/{course.id}"  # 学生向けのリンク
+                )
+                print(f"Notification created for student_id: {student_id}")  # デバッグログ
+
+                # WebSocket通知を送信
+                async_to_sync(channel_layer.group_send)(
+                    f"user_{student_id}",  # 生徒ごとのWebSocketグループ
+                    {
+                        "type": "send_notification",  # WebSocketイベント名
+                        "notification": NotificationSerializer(notification).data,  # 通知データ
+                    }
+                )
+                print(f"WebSocket notification sent to student_id: {student_id}")  # デバッグログ
+            except Exception as e:
+                print(f"Error sending notification to student_id {student_id}: {e}")  # エラーログ
 
 # モジュール編集ビュー
 class ModuleUpdateAPIView(generics.UpdateAPIView):
@@ -141,24 +187,44 @@ class EnrollmentView(APIView):
     """
     生徒がコースに登録するビュー
     """
+    permission_classes = [IsAuthenticated]
+
     def post(self, request, course_id):
-        # 指定されたコースを取得
+        # コースを取得
         course = get_object_or_404(Course, id=course_id)
         student = request.user
 
-        # ユーザーが生徒であるか確認
+        # 生徒であることを確認
         if student.user_type != 'student':
-            return Response({'error': 'Only students can enroll in courses'}, status=status.HTTP_403_FORBIDDEN)
+            return Response({'error': 'Only students can enroll in courses'}, status=403)
 
-        # 既に登録済みかを確認
+        # 重複登録を防止
         if Enrollment.objects.filter(student=student, course=course).exists():
-            return Response({'error': 'You are already enrolled in this course'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'You are already enrolled in this course'}, status=400)
 
-        # Enrollmentを作成
+        # Enrollment作成
         enrollment = Enrollment.objects.create(student=student, course=course)
-        serializer = EnrollmentSerializer(enrollment)
 
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # 教師への通知作成
+        teacher = course.created_by
+        notification = Notification.objects.create(
+            user=teacher,
+            title="New Student Enrolled",
+            message=f"{student.name} has enrolled in your course '{course.title}'.",
+            link=f"/courses/{course.id}/students/"
+        )
+
+        # WebSocket通知送信
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"user_{teacher.id}",  # 教師のWebSocketグループ
+            {
+                "type": "send_notification",  # WebSocketイベント名
+                "notification": NotificationSerializer(notification).data,  # 通知データ
+            }
+        )
+
+        return Response({"message": "Enrolled successfully"}, status=201)
 
 class CompleteModuleView(APIView):
     def post(self, request, module_id):

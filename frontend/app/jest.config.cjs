@@ -1,9 +1,10 @@
 module.exports = {
   transform: {
-    "^.+\\.jsx?$": "babel-jest"
+    "^.+\\.jsx?$": "babel-jest", // JS/JSXのトランスフォーム
   },
   moduleNameMapper: {
-    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    "\\.(css|less|scss|sass)$": "identity-obj-proxy", // CSSファイルをモック
   },
-  testEnvironment: "jest-environment-jsdom"
+  setupFiles: ["<rootDir>/jest.setup.js"], // Jestのセットアップファイル
+  testEnvironment: "jsdom", // ブラウザのような環境
 };

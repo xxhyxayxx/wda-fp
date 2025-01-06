@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser
+from .models import CustomUser, Notification
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -49,3 +49,10 @@ class ChangePasswordSerializer(serializers.Serializer):
         user = self.context['request'].user
         user.set_password(self.validated_data['new_password'])
         user.save(update_fields=['password'])  # パスワードのみを保存
+
+class NotificationSerializer(serializers.ModelSerializer):
+    """Notification モデルのシリアライザー"""
+    class Meta:
+        model = Notification
+        fields = ('id', 'user', 'title', 'message', 'link', 'event_type', 'created_at', 'is_read')
+        read_only_fields = ('id', 'user', 'created_at')  # is_read を書き込み可能にしない場合はここに追加

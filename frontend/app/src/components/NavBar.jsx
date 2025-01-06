@@ -6,6 +6,10 @@ import LogoutButton from './LogoutButton';
 
 const NavBar = () => {
     const { userInfo } = useSelector((state) => state.user);
+    const { notifications } = useSelector((state) => state.notifications);
+
+    // 未読通知の数を計算
+    const unreadCount = notifications.filter((notification) => !notification.is_read).length;
 
     return (
         <nav className={styles.navMenu}>
@@ -29,6 +33,17 @@ const NavBar = () => {
                         </Link>
                     </li>
                 )}
+                {/* 通知リンク */}
+                <li className={styles.notificationLink}>
+                    <Link to="/notifications" className={styles.navLink}>
+                        Notifications
+                        {unreadCount > 0 && (
+                            <span className={styles.unreadIndicator}>
+                                {unreadCount}
+                            </span>
+                        )}
+                    </Link>
+                </li>
                 {/* プロフィールリンク */}
                 <li>
                     <Link to="/account" className={styles.profileLink}>

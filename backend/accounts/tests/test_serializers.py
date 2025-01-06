@@ -1,8 +1,9 @@
 from django.test import TestCase
-from accounts.models import CustomUser
-from accounts.serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer
+from accounts.models import CustomUser, Notification
+from accounts.serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer, NotificationSerializer
 from django.test import RequestFactory
 from rest_framework import serializers
+from dateutil.parser import isoparse
 
 class UserRegistrationSerializerTest(TestCase):
     def test_user_registration_serializer_with_valid_data(self):
@@ -221,3 +222,89 @@ class ChangePasswordSerializerTest(TestCase):
         serializer = ChangePasswordSerializer(data=data, context={'request': request})
         self.assertFalse(serializer.is_valid())
         self.assertIn('non_field_errors', serializer.errors)
+
+class NotificationSerializerTest(TestCase):
+    def setUp(self):
+        # テスト用のユーザーを作成
+        self.user = CustomUser.objects.create_user(
+            email='testuser@example.com',
+            password='testpassword',
+            user_type='student',
+            name='Test User'
+        )
+        # テスト用の通知データを準備
+        self.notification = Notification.objects.create(
+            user=self.user,
+            title="Test Notification",
+            message="This is a test notification.",
+            link="http://example.com/test"
+        )
+
+    def test_notification_serializer_with_valid_data(self):
+        """NotificationSerializer が有効なデータを正しくシリアライズするかをテスト"""
+        serializer = NotificationSerializer(instance=self.notification)
+        
+        serialized_data = serializer.data
+        expected_data = {
+            'id': self.notification.id,
+            'user': self.user.id,  # ForeignKey の ID
+            'title': self.notification.title,
+            'message': self.notification.message,
+            'link': self.notification.link,
+            'event_type': self.notification.event_type,  # event_type フィールドは残す
+            'is_read': self.notification.is_read,  # is_read フィールドを追加
+            'created_at': self.notification.created_at.isoformat(),  # ISOフォーマットで比較
+        }
+
+        # 比較: created_at
+        self.assertEqual(
+            isoparse(serialized_data['created_at']),
+            isoparse(expected_data['created_at'])
+        )
+
+        # created_at 以外のフィールド比較
+        del serialized_data['created_at']
+        del expected_data['created_at']
+        self.assertEqual(serialized_data, expected_data)
+
+    def test_notification_serializer_default_is_read(self):
+        """is_read フィールドのデフォルト値が False であることをテスト"""
+        serializer = NotificationSerializer(instance=self.notification)
+        self.assertFalse(serializer.data['is_read'])  # デフォルト値の確認
+
+    def test_notification_serializer_with_is_read_update(self):
+        """is_read フィールドが正しく更新されるかをテスト"""
+        data = {
+            'is_read': True
+        }
+        serializer = NotificationSerializer(instance=self.notification, data=data, partial=True)
+        self.assertTrue(serializer.is_valid())
+        updated_notification = serializer.save()
+        self.assertTrue(updated_notification.is_read)  # is_read が更新されていることを確認
+
+    def test_notification_serializer_excludes_read_only_fields(self):
+        """読み取り専用フィールドが入力データとして受け入れられないことを確認するテスト"""
+        data = {
+            'id': 999,  # 読み取り専用フィールドを設定
+            'user': self.user.id,
+            'title': "Invalid Notification",
+            'message': "This notification should not allow id to be set.",
+            'link': "http://example.com",
+            'is_read': False  # 書き込み可能な is_read
+        }
+        serializer = NotificationSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        notification = serializer.save(user=self.user)  # user を渡す
+        self.assertNotEqual(notification.id, 999)  # id はデータベースで自動設定される
+        self.assertIsNotNone(notification.created_at)  # created_at も自動設定
+        self.assertFalse(notification.is_read)  # is_read が正しく設定されることを確認
+
+    def test_notification_serializer_partial_update(self):
+        """部分更新で is_read フィールドを変更できることをテスト"""
+        data = {
+            'is_read': True
+        }
+        serializer = NotificationSerializer(instance=self.notification, data=data, partial=True)
+        self.assertTrue(serializer.is_valid())
+        updated_notification = serializer.save()
+        self.assertTrue(updated_notification.is_read)  # 部分更新で is_read が変更されていることを確認

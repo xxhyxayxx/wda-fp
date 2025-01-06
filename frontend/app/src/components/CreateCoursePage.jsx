@@ -8,7 +8,6 @@ const CreateCoursePage = () => {
 
   return (
     <div>
-    <NavBar />
     <div>
       <CourseForm onClose={() => navigate('/courses')} />
     </div>

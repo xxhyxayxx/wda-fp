@@ -42,6 +42,7 @@ db.sqlite3
 **/migrations/*.pyc
 **/migrations/*.pyo
 **/migrations/__pycache__/
+staticfiles/
 
 # Pyenv
 .python-version
@@ -64,4 +65,5 @@ coverage/
 media/
 profile_images/
 course_files/
+
 
