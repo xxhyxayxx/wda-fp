@@ -9,6 +9,7 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.generics import ListAPIView
 from .tasks import generate_notification
 from django.db.models import Q
+from rest_framework.generics import RetrieveAPIView
 
 class UserRegistrationAPIView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
@@ -141,3 +142,12 @@ class UserSearchAPIView(ListAPIView):
 
         # 最大10件のみ返す
         return queryset.only('id', 'name', 'email')[:10]
+
+class UserDetailAPIView(RetrieveAPIView):
+    """
+    特定のユーザーの詳細を取得するAPI
+    """
+    queryset = CustomUser.objects.all()
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticated]  # 認証が必要
+    lookup_field = 'id'  # URLでユーザーIDを指定

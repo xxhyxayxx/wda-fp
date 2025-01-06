@@ -1,7 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APIClient
+from rest_framework.test import APIClient, APITestCase
 from accounts.models import CustomUser, Notification
 from django.core.files.uploadedfile import SimpleUploadedFile
 from datetime import datetime
@@ -214,3 +214,28 @@ class UserSearchAPIViewTest(TestCase):
         emails = [user['email'] for user in response.data]
         self.assertIn("unique_user1@example.com", emails)
         self.assertIn("unique_user2@example.com", emails)
+
+class UserDetailAPITestCase(APITestCase):
+    def setUp(self):
+        # テスト用のユーザー作成
+        self.user = CustomUser.objects.create_user(
+            email='testuser@example.com',
+            password='testpassword',
+            name='Test User',
+            user_type='student'
+        )
+        self.client.force_authenticate(user=self.user)
+
+    def test_get_user_detail(self):
+        # ユーザー詳細取得APIのテスト
+        response = self.client.get(f'/accounts/users/{self.user.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['email'], self.user.email)
+        self.assertEqual(response.data['name'], self.user.name)
+        self.assertEqual(response.data['user_type'], self.user.user_type)
+
+    def test_get_user_detail_unauthenticated(self):
+        # 未認証のリクエストをテスト
+        self.client.logout()
+        response = self.client.get(f'/accounts/users/{self.user.id}/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

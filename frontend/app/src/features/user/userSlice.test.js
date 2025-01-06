@@ -258,3 +258,78 @@ describe('userSlice - changePasswordアクションのテスト', () => {
     expect(stateAfterRejected.status).toBe('idle'); // rejected後、statusは'idle'に戻る
   });
 });
+
+// searchUsersアクションのテスト
+describe('userSlice - searchUsersアクションのテスト', () => {
+  it('pending時にstatusがloadingに変わる', async () => {
+    apiClient.get.mockResolvedValueOnce({ data: [{ id: 1, name: 'Test User' }] });
+
+    const actionPromise = store.dispatch(searchUsers('test'));
+
+    const stateDuringPending = store.getState().user;
+    expect(stateDuringPending.status).toBe('loading');
+
+    await actionPromise;
+  });
+
+  it('fulfilled時にsearchResultsが更新される', async () => {
+    const mockSearchResults = [{ id: 1, name: 'Test User' }];
+    apiClient.get.mockResolvedValueOnce({ data: mockSearchResults });
+
+    await store.dispatch(searchUsers('test'));
+
+    const stateAfterFulfilled = store.getState().user;
+    expect(stateAfterFulfilled.searchResults).toEqual(mockSearchResults);
+    expect(stateAfterFulfilled.status).toBe('idle'); // fulfilled後、statusは'idle'に戻る
+  });
+
+  it('rejected時にerrorが設定される', async () => {
+    const mockErrorMessage = '検索に失敗しました';
+    apiClient.get.mockRejectedValueOnce(new Error(mockErrorMessage));
+
+    await store.dispatch(searchUsers('test'));
+
+    const stateAfterRejected = store.getState().user;
+    expect(stateAfterRejected.error).toBe(mockErrorMessage);
+    expect(stateAfterRejected.status).toBe('idle'); // rejected後、statusは'idle'に戻る
+    expect(stateAfterRejected.searchResults).toEqual([]); // 検索結果は空になる
+  });
+});
+
+// fetchUserDetailsアクションのテスト
+describe('userSlice - fetchUserDetailsアクションのテスト', () => {
+  it('pending時にstatusがloadingに変わる', async () => {
+    apiClient.get.mockResolvedValueOnce({ data: { id: 1, name: 'Test User' } });
+
+    const actionPromise = store.dispatch(fetchUserDetails(1));
+
+    const stateDuringPending = store.getState().user;
+    expect(stateDuringPending.status).toBe('loading');
+
+    await actionPromise;
+  });
+
+  it('fulfilled時にselectedUserが更新される', async () => {
+    const mockUserDetails = { id: 1, name: 'Test User', email: 'test@example.com' };
+    apiClient.get.mockResolvedValueOnce({ data: mockUserDetails });
+
+    await store.dispatch(fetchUserDetails(1));
+
+    const stateAfterFulfilled = store.getState().user;
+    expect(stateAfterFulfilled.selectedUser).toEqual(mockUserDetails);
+    expect(stateAfterFulfilled.status).toBe('idle'); // fulfilled後、statusは'idle'に戻る
+  });
+
+  it('rejected時にerrorが設定され、selectedUserがnullになる', async () => {
+    const mockErrorMessage = 'ユーザー詳細の取得に失敗しました';
+    apiClient.get.mockRejectedValueOnce(new Error(mockErrorMessage));
+
+    await store.dispatch(fetchUserDetails(1));
+
+    const stateAfterRejected = store.getState().user;
+    expect(stateAfterRejected.error).toBe(mockErrorMessage);
+    expect(stateAfterRejected.selectedUser).toBeNull(); // 失敗した場合、selectedUserはnullになる
+    expect(stateAfterRejected.status).toBe('idle'); // rejected後、statusは'idle'に戻る
+  });
+});
+

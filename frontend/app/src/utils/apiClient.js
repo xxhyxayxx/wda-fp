@@ -1,13 +1,26 @@
 import axios from 'axios';
 
-// 環境変数の取得（Node.jsとブラウザでの互換性を確保）
-const apiUrl =
-  (typeof process !== 'undefined' && process.env.VITE_API_URL) ||
-  (typeof import.meta !== 'undefined' && import.meta.env.VITE_API_URL) ||
-  'http://127.0.0.1:8000/';
+// Jest 環境かどうかを判定するフラグ
+const isTestEnvironment = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+
+// 環境ごとの API URL を設定
+let apiUrl;
+
+if (isTestEnvironment) {
+  // Jest テスト環境用
+  apiUrl = process.env.VITE_API_URL || 'http://127.0.0.1:8000/';
+} else if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) {
+  // ブラウザ環境用
+  apiUrl = import.meta.env.VITE_API_URL;
+} else {
+  // デフォルト値
+  apiUrl = 'http://127.0.0.1:8000/';
+}
+
+console.log('Using API URL:', apiUrl);
 
 const apiClient = axios.create({
-  baseURL: apiUrl, // デフォルト値を設定
+  baseURL: apiUrl, // 環境に応じた API URL を設定
 });
 
 apiClient.interceptors.response.use(

@@ -5,6 +5,6 @@ module.exports = {
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy", // CSSファイルをモック
   },
-  setupFiles: ["<rootDir>/jest.setup.js"], // Jestのセットアップファイル
-  testEnvironment: "jsdom", // ブラウザのような環境
+  setupFiles: ["<rootDir>/jest.setup.js"], // Jestのセットアップファイルを指定
+  testEnvironment: "jsdom", // テスト環境をブラウザライクに
 };

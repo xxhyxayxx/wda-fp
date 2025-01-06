@@ -4,6 +4,8 @@ import apiClient from '../../utils/apiClient'; // 作成したaxiosインスタ�
 const initialState = {
   isLoggedIn: false,
   userInfo: null,
+  searchResults: [], // 検索結果を保持
+  selectedUser: null, // 選択されたユーザー詳細
   status: 'idle',
   error: null,
 };
@@ -13,6 +15,32 @@ const token = localStorage.getItem('authToken');
 if (token) {
   apiClient.defaults.headers.common['Authorization'] = `Token ${token}`;
 }
+
+// ユーザー検索の非同期アクション
+export const searchUsers = createAsyncThunk(
+  'user/searchUsers',
+  async (query, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get(`/accounts/search/?q=${query}`);
+      return response.data; // 検索結果を返す
+    } catch (error) {
+      return rejectWithValue(error.message || '検索に失敗しました');
+    }
+  }
+);
+
+// ユーザー詳細取得の非同期アクション
+export const fetchUserDetails = createAsyncThunk(
+  'user/fetchUserDetails',
+  async (userId, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get(`/accounts/users/${userId}/`);
+      return response.data; // ユーザー詳細を返す
+    } catch (error) {
+      return rejectWithValue(error.message || 'ユーザー詳細の取得に失敗しました');
+    }
+  }
+);
 
 // 非同期アクションの作成
 export const registerUser = createAsyncThunk(
@@ -120,7 +148,13 @@ const userSlice = createSlice({
   name: 'user',
   initialState,
   reducers: {
-    // statusをリセットするアクションを追加
+    // 状態をリセットするアクション
+    resetSearchResults: (state) => {
+      state.searchResults = [];
+    },
+    resetSelectedUser: (state) => {
+      state.selectedUser = null;
+    },
     resetStatus: (state) => {
       state.status = 'idle';
     },
@@ -218,11 +252,41 @@ const userSlice = createSlice({
         state.status = 'failed';
         state.error = action.payload;
         state.status = 'idle';
+      })
+      // searchUsers
+      .addCase(searchUsers.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(searchUsers.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.searchResults = action.payload; // 検索結果を保存
+        state.status = 'idle';
+      })
+      .addCase(searchUsers.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+        state.searchResults = [];
+      })
+      // fetchUserDetails
+      .addCase(fetchUserDetails.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(fetchUserDetails.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.selectedUser = action.payload; // ユーザー詳細を保存
+        state.status = 'idle';
+      })
+      .addCase(fetchUserDetails.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+        state.selectedUser = null;
       });
   },
 });
 
 // resetStatusアクションをエクスポート
-export const { resetStatus } = userSlice.actions;
+export const { resetSearchResults, resetSelectedUser, resetStatus } = userSlice.actions;
 
 export default userSlice.reducer;
