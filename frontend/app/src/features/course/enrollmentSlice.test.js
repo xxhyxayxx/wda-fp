@@ -1,9 +1,15 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
-import enrollmentReducer, { enrollInCourse, fetchEnrollments, fetchCourseStudents, toggleBlockStudent } from './enrollmentSlice';
+import enrollmentReducer, {
+  enrollInCourse,
+  fetchEnrollments,
+  fetchCourseStudents,
+  toggleBlockStudent,
+} from './enrollmentSlice';
 import apiClient from '../../utils/apiClient';
 
 // Mock API calls
-jest.mock('../../utils/apiClient');
+vi.mock('../../utils/apiClient');
 
 let store;
 
@@ -18,10 +24,10 @@ beforeEach(() => {
 
 describe('enrollmentSlice', () => {
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
-  test('should enroll in a course successfully', async () => {
+  it('should enroll in a course successfully', async () => {
     const mockEnrollment = { id: 1, course: 1, student: 1, status: 'ENROLLED' };
     apiClient.post.mockResolvedValueOnce({ data: mockEnrollment });
 
@@ -33,7 +39,7 @@ describe('enrollmentSlice', () => {
     expect(state.loading).toBe(false);
   });
 
-  test('should handle enrollment failure', async () => {
+  it('should handle enrollment failure', async () => {
     const mockError = 'Failed to enroll';
     apiClient.post.mockRejectedValueOnce(new Error(mockError));
 
@@ -45,7 +51,7 @@ describe('enrollmentSlice', () => {
     expect(state.loading).toBe(false);
   });
 
-  test('should fetch enrollments successfully', async () => {
+  it('should fetch enrollments successfully', async () => {
     const mockEnrollments = [
       { id: 1, course: 1, student: 1, status: 'ENROLLED' },
       { id: 2, course: 2, student: 1, status: 'ENROLLED' },
@@ -60,7 +66,7 @@ describe('enrollmentSlice', () => {
     expect(state.loading).toBe(false);
   });
 
-  test('should handle fetch enrollments failure', async () => {
+  it('should handle fetch enrollments failure', async () => {
     const mockError = 'Failed to fetch enrollments';
     apiClient.get.mockRejectedValueOnce(new Error(mockError));
 
@@ -72,7 +78,7 @@ describe('enrollmentSlice', () => {
     expect(state.loading).toBe(false);
   });
 
-  test('should fetch course students successfully', async () => {
+  it('should fetch course students successfully', async () => {
     const mockStudents = [
       { id: 1, name: 'Student One', email: 'student1@example.com', profile_image: null },
       { id: 2, name: 'Student Two', email: 'student2@example.com', profile_image: 'http://example.com/image.jpg' },
@@ -87,7 +93,7 @@ describe('enrollmentSlice', () => {
     expect(state.loading).toBe(false);
   });
 
-  test('should handle fetch course students failure', async () => {
+  it('should handle fetch course students failure', async () => {
     const mockError = 'Failed to fetch course students';
     apiClient.get.mockRejectedValueOnce(new Error(mockError));
 
@@ -99,7 +105,7 @@ describe('enrollmentSlice', () => {
     expect(state.loading).toBe(false);
   });
 
-  test('should toggle student block status successfully', async () => {
+  it('should toggle student block status successfully', async () => {
     // 初期状態のモックデータ
     const initialStudents = [
       { id: 1, name: 'Student One', status: 'ENROLLED', block_reason: null },
@@ -119,17 +125,19 @@ describe('enrollmentSlice', () => {
       },
       middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
     });
-  
+
     const mockResponse = { id: 1, name: 'Student One', status: 'BLOCKED', block_reason: 'Violation' };
     apiClient.post.mockResolvedValueOnce({ data: mockResponse });
-  
-    const result = await store.dispatch(toggleBlockStudent({ courseId: 1, studentId: 1, reason: 'Violation' }));
-  
+
+    const result = await store.dispatch(
+      toggleBlockStudent({ courseId: 1, studentId: 1, reason: 'Violation' })
+    );
+
     expect(result.payload).toEqual(mockResponse);
-  
+
     const state = store.getState().enrollment;
     const updatedStudent = state.courseStudents.find((student) => student.id === mockResponse.id);
     expect(updatedStudent.status).toBe('BLOCKED'); // ブロック状態の確認
     expect(updatedStudent.block_reason).toBe('Violation'); // ブロック理由の確認
-  });  
+  });
 });

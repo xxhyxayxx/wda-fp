@@ -1,9 +1,10 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import courseReducer, { fetchCourses, createCourse, updateCourse, deleteCourse } from './courseSlice';
 import apiClient from '../../utils/apiClient';
 
 // Mocking apiClient
-jest.mock('../../utils/apiClient');
+vi.mock('../../utils/apiClient');
 
 let store;
 
@@ -17,7 +18,7 @@ beforeEach(() => {
 });
 
 describe('courseSlice', () => {
-  test('should fetch courses successfully', async () => {
+  it('should fetch courses successfully', async () => {
     // Mock successful response
     const mockCourses = [
       { id: 1, title: 'Course 1' },
@@ -34,7 +35,7 @@ describe('courseSlice', () => {
     expect(state.error).toBeNull();
   });
 
-  test('should handle fetch courses failure', async () => {
+  it('should handle fetch courses failure', async () => {
     // Mock failed response
     const mockError = 'Failed to fetch courses';
     apiClient.get.mockRejectedValueOnce(new Error(mockError));
@@ -47,7 +48,7 @@ describe('courseSlice', () => {
     expect(state.error).toBe(mockError);
   });
 
-  test('should create a course successfully', async () => {
+  it('should create a course successfully', async () => {
     // Mock successful response
     const newCourse = { id: 3, title: 'New Course' };
     apiClient.post.mockResolvedValueOnce({ data: newCourse });
@@ -61,7 +62,7 @@ describe('courseSlice', () => {
     expect(state.error).toBeNull();
   });
 
-  test('should handle create course failure', async () => {
+  it('should handle create course failure', async () => {
     // Mock failed response
     const mockError = 'Failed to create course';
     apiClient.post.mockRejectedValueOnce(new Error(mockError));
@@ -74,7 +75,7 @@ describe('courseSlice', () => {
     expect(state.error).toBe(mockError);
   });
 
-  test('should update a course successfully', async () => {
+  it('should update a course successfully', async () => {
     // Initial state
     const initialState = [{ id: 1, title: 'Old Course' }];
     store = configureStore({
@@ -99,7 +100,7 @@ describe('courseSlice', () => {
     expect(state.error).toBeNull();
   });
 
-  test('should handle update course failure', async () => {
+  it('should handle update course failure', async () => {
     // Mock failed response
     const mockError = 'Failed to update course';
     apiClient.put.mockRejectedValueOnce(new Error(mockError));
@@ -112,7 +113,7 @@ describe('courseSlice', () => {
     expect(state.error).toBe(mockError);
   });
 
-  test('should delete a course successfully', async () => {
+  it('should delete a course successfully', async () => {
     // Initial state
     const initialState = [{ id: 1, title: 'Course to Delete' }];
     store = configureStore({
@@ -136,7 +137,7 @@ describe('courseSlice', () => {
     expect(state.error).toBeNull();
   });
 
-  test('should handle delete course failure', async () => {
+  it('should handle delete course failure', async () => {
     // Mock failed response
     const mockError = 'Failed to delete course';
     apiClient.delete.mockRejectedValueOnce(new Error(mockError));
