@@ -1,6 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { BrowserRouter } from 'react-router-dom';
@@ -9,7 +9,8 @@ import courseReducer from '../features/course/courseSlice';
 import enrollmentReducer from '../features/course/enrollmentSlice';
 import apiClient from '../utils/apiClient';
 
-jest.mock('../utils/apiClient');
+// Mocking apiClient
+vi.mock('../utils/apiClient');
 
 // Function to render a component with Redux store and BrowserRouter
 const renderWithProvider = (component) => {
@@ -36,11 +37,10 @@ const renderWithProvider = (component) => {
 
 describe('StudentCourses Component', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.resetAllMocks();
+    vi.clearAllMocks();
   });
 
-  test('renders the course list excluding BLOCKED enrollments', async () => {
+  it('renders the course list excluding BLOCKED enrollments', async () => {
     const mockCourses = [
       { id: 1, title: 'Course 1', description: 'Description 1', category: 'Category 1' },
       { id: 2, title: 'Course 2', description: 'Description 2', category: 'Category 2' },
@@ -52,34 +52,24 @@ describe('StudentCourses Component', () => {
 
     apiClient.get.mockImplementation((url) => {
       if (url === '/courses/') {
-        console.log('Mocked /courses/ response:', mockCourses);
         return Promise.resolve({ data: mockCourses });
       }
       if (url === '/courses/enrollments/') {
-        console.log('Mocked /courses/enrollments/ response:', mockEnrollments);
         return Promise.resolve({ data: mockEnrollments });
       }
       return Promise.reject(new Error('Unknown endpoint'));
     });
 
-    await act(async () => {
-      renderWithProvider(<StudentCourses />);
-    });
+    renderWithProvider(<StudentCourses />);
 
-    // DOMが正しく更新されたことを確認
+    // Verify the DOM updates correctly
     await waitFor(() => {
-      const enrolledCourse = screen.getByText('Course 1'); // ENROLLED のコース
-      const blockedCourse = screen.queryByText('Course 2'); // BLOCKED のコース
-
-      console.log('Enrolled Course Found:', enrolledCourse);
-      console.log('Blocked Course Found:', blockedCourse);
-
-      expect(enrolledCourse).toBeInTheDocument();
-      expect(blockedCourse).not.toBeInTheDocument(); // BLOCKED コースが存在しない
+      expect(screen.getByText('Course 1')).toBeInTheDocument(); // ENROLLED course
+      expect(screen.queryByText('Course 2')).not.toBeInTheDocument(); // BLOCKED course
     });
   });
 
-  test('handles course enrollment and updates the list', async () => {
+  it('handles course enrollment and updates the list', async () => {
     const mockCourses = [
       { id: 1, title: 'Course 1', description: 'Description 1', category: 'Category 1' },
       { id: 2, title: 'Course 2', description: 'Description 2', category: 'Category 2' },
@@ -98,9 +88,7 @@ describe('StudentCourses Component', () => {
       return Promise.reject(new Error('Unknown endpoint'));
     });
 
-    await act(async () => {
-      renderWithProvider(<StudentCourses />);
-    });
+    renderWithProvider(<StudentCourses />);
 
     const enrollButton = await screen.findByText('Enroll');
     expect(enrollButton).toBeInTheDocument();
@@ -120,14 +108,12 @@ describe('StudentCourses Component', () => {
     });
   });
 
-  test('displays error message on fetch failure', async () => {
+  it('displays error message on fetch failure', async () => {
     const errorMessage = 'Failed to fetch courses';
 
     apiClient.get.mockRejectedValueOnce(new Error(errorMessage));
 
-    await act(async () => {
-      renderWithProvider(<StudentCourses />);
-    });
+    renderWithProvider(<StudentCourses />);
 
     await waitFor(() => {
       expect(screen.getByText(/Error:/i)).toBeInTheDocument();
@@ -135,25 +121,21 @@ describe('StudentCourses Component', () => {
     });
   });
 
-  test('displays "Enrolled" badge for enrolled courses', async () => {
+  it('displays "Enrolled" badge for enrolled courses', async () => {
     const mockCourses = [{ id: 1, title: 'Course 1', description: 'Description 1', category: 'Category 1' }];
     const mockEnrollments = [{ id: 1, course: { id: 1, title: 'Course 1' }, status: 'ENROLLED' }];
 
     apiClient.get.mockImplementation((url) => {
       if (url === '/courses/') {
-        console.log('Mocked /courses/ response:', mockCourses);
         return Promise.resolve({ data: mockCourses });
       }
       if (url === '/courses/enrollments/') {
-        console.log('Mocked /courses/enrollments/ response:', mockEnrollments);
         return Promise.resolve({ data: mockEnrollments });
       }
       return Promise.reject(new Error('Unknown endpoint'));
     });
 
-    await act(async () => {
-      renderWithProvider(<StudentCourses />);
-    });
+    renderWithProvider(<StudentCourses />);
 
     await waitFor(() => {
       expect(screen.getByText('Enrolled')).toBeInTheDocument();

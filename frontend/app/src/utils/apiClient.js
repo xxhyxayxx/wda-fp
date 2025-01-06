@@ -1,21 +1,7 @@
-import axios from 'axios';
+import axios from 'axios'; 
 
-// Jest 環境かどうかを判定するフラグ
-const isTestEnvironment = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
-
-// 環境ごとの API URL を設定
-let apiUrl;
-
-if (isTestEnvironment) {
-  // Jest テスト環境用
-  apiUrl = process.env.VITE_API_URL || 'http://127.0.0.1:8000/';
-} else if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) {
-  // ブラウザ環境用
-  apiUrl = import.meta.env.VITE_API_URL;
-} else {
-  // デフォルト値
-  apiUrl = 'http://127.0.0.1:8000/';
-}
+// Vite/Vitestでは import.meta.env を使用する
+const apiUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/';
 
 console.log('Using API URL:', apiUrl);
 
@@ -41,3 +27,4 @@ apiClient.interceptors.response.use(
 );
 
 export default apiClient;
+

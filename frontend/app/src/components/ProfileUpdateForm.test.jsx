@@ -1,6 +1,7 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'; 
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import userReducer from '../features/user/userSlice';
@@ -9,12 +10,10 @@ import { MemoryRouter } from 'react-router-dom';
 import apiClient from '../utils/apiClient';
 
 // Mocking apiClient
-jest.mock('../utils/apiClient');
+vi.mock('../utils/apiClient');
 
 // Mocking URL.createObjectURL
-beforeAll(() => {
-  global.URL.createObjectURL = jest.fn(() => 'http://example.com/preview_image.png');
-});
+global.URL.createObjectURL = vi.fn(() => 'http://example.com/preview_image.png');
 
 // Reduxストアとラップする関数
 const renderWithProvider = (component) => {
@@ -33,7 +32,11 @@ const renderWithProvider = (component) => {
 };
 
 describe('ProfileUpdateForm Component', () => {
-  test('renders form with fetched user data', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders form with fetched user data', async () => {
     const mockUserData = {
       name: 'Test User',
       email: 'test@example.com',
@@ -58,7 +61,7 @@ describe('ProfileUpdateForm Component', () => {
     expect(screen.getByLabelText(/Email/i)).toHaveValue(mockUserData.email);
   });
 
-  test('updates status to succeeded after profile update', async () => {
+  it('updates status to succeeded after profile update', async () => {
     const mockUpdatedUserData = {
       name: 'Updated User',
       email: 'updated@example.com',

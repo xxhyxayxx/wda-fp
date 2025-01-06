@@ -2,6 +2,7 @@ import React from 'react';
 import { render } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { Provider } from 'react-redux';
+import { describe, it, expect, beforeEach } from 'vitest';
 import configureStore from 'redux-mock-store';
 import PrivateRoute from './PrivateRoute';
 

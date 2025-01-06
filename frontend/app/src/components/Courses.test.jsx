@@ -1,7 +1,7 @@
 // src/components/Courses.test.jsx
 import React from 'react';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react'; // actをインポート
-import '@testing-library/jest-dom';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import courseReducer from '../features/course/courseSlice';
@@ -11,112 +11,123 @@ import apiClient from '../utils/apiClient';
 import { BrowserRouter } from 'react-router-dom';
 
 // Mock apiClient
-jest.mock('../utils/apiClient');
+vi.mock('../utils/apiClient');
 
 // Function to render a component with Redux store
 const renderWithProvider = (component) => {
-    const store = configureStore({
-        reducer: { 
-            course: courseReducer,
-            user: userReducer, // user スライスを追加
-        },
-        middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
-        preloadedState: {
-            user: {
-                userInfo: { name: 'Test User', email: 'test@example.com' }, // userInfo を設定
-            },
-        },
-    });
+  const store = configureStore({
+    reducer: {
+      course: courseReducer,
+      user: userReducer,
+    },
+    preloadedState: {
+      user: {
+        userInfo: { name: 'Test User', email: 'test@example.com' },
+      },
+    },
+  });
 
-    return render(
-        <Provider store={store}>
-            <BrowserRouter>{component}</BrowserRouter>
-        </Provider>
-    );
+  return render(
+    <Provider store={store}>
+      <BrowserRouter>{component}</BrowserRouter>
+    </Provider>
+  );
 };
 
 describe('Courses Component', () => {
-    test('fetches and displays courses', async () => {
-        const mockCourses = [
-            { id: 1, title: 'Course 1', description: 'Description 1', created_at: '2024-10-29T10:00:00Z', updated_at: '2024-10-29T10:05:00Z' },
-            { id: 2, title: 'Course 2', description: 'Description 2', created_at: '2024-10-29T11:00:00Z', updated_at: '2024-10-29T11:05:00Z' },
-        ];
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
-        apiClient.get.mockResolvedValueOnce({ data: mockCourses });
+  it('fetches and displays courses', async () => {
+    const mockCourses = [
+      {
+        id: 1,
+        title: 'Course 1',
+        description: 'Description 1',
+        created_at: '2024-10-29T10:00:00Z',
+        updated_at: '2024-10-29T10:05:00Z',
+      },
+      {
+        id: 2,
+        title: 'Course 2',
+        description: 'Description 2',
+        created_at: '2024-10-29T11:00:00Z',
+        updated_at: '2024-10-29T11:05:00Z',
+      },
+    ];
 
-        await act(async () => {
-            renderWithProvider(<Courses />);
-        });
+    apiClient.get.mockResolvedValueOnce({ data: mockCourses });
 
-        await waitFor(() => {
-            expect(screen.getByText('Course 1')).toBeInTheDocument();
-            expect(screen.getByText('Course 2')).toBeInTheDocument();
-        });
+    await act(async () => {
+      renderWithProvider(<Courses />);
     });
 
-    test('shows loading message while fetching', async () => {
-        // APIレスポンスを遅延させるモックを設定
-        apiClient.get.mockImplementationOnce(
-            () => new Promise(() => { }) // 無限に待機するPromiseを返す
-        );
+    await waitFor(() => {
+      expect(screen.getByText('Course 1')).toBeInTheDocument();
+      expect(screen.getByText('Course 2')).toBeInTheDocument();
+    });
+  });
 
-        await act(async () => {
-            renderWithProvider(<Courses />);
-        });
+  it('shows loading message while fetching', async () => {
+    apiClient.get.mockImplementationOnce(
+      () => new Promise(() => {}) // Mock an unresolved Promise
+    );
 
-        // ローディングメッセージの表示を確認
-        expect(screen.getByText(/Loading courses.../i)).toBeInTheDocument();
+    await act(async () => {
+      renderWithProvider(<Courses />);
     });
 
-    test('displays error message if fetch fails', async () => {
-        apiClient.get.mockRejectedValueOnce(new Error('Fetch failed'));
+    expect(screen.getByText(/Loading courses.../i)).toBeInTheDocument();
+  });
 
-        await act(async () => {
-            renderWithProvider(<Courses />);
-        });
+  it('displays error message if fetch fails', async () => {
+    apiClient.get.mockRejectedValueOnce(new Error('Fetch failed'));
 
-        await waitFor(() => {
-            expect(screen.getByText(/Error: Fetch failed/i)).toBeInTheDocument();
-        });
+    await act(async () => {
+      renderWithProvider(<Courses />);
     });
 
-    test('renders Create Course button', async () => {
-        // 正しいモックデータを設定
-        const mockCourses = [
-            { id: 1, name: 'Course 1', description: 'Description 1' },
-        ];
-        apiClient.get.mockResolvedValueOnce({ data: mockCourses });
-    
-        await act(async () => {
-            renderWithProvider(<Courses />);
-        });
-    
-        await waitFor(() => {
-            expect(screen.getByRole('button', { name: /Create Course/i })).toBeInTheDocument();
-        });
+    await waitFor(() => {
+      expect(screen.getByText(/Error: Fetch failed/i)).toBeInTheDocument();
+    });
+  });
+
+  it('renders Create Course button', async () => {
+    const mockCourses = [
+      { id: 1, title: 'Course 1', description: 'Description 1' },
+    ];
+    apiClient.get.mockResolvedValueOnce({ data: mockCourses });
+
+    await act(async () => {
+      renderWithProvider(<Courses />);
     });
 
-    test('navigates to CourseForm when Create Course button is clicked', async () => {
-        // 正しいモックデータを設定
-        const mockCourses = [
-            { id: 1, name: 'Course 1', description: 'Description 1' },
-        ];
-        apiClient.get.mockResolvedValueOnce({ data: mockCourses });
-    
-        await act(async () => {
-            renderWithProvider(<Courses />);
-        });
-    
-        // "Create Course" ボタンが存在することを確認
-        const createCourseButton = await screen.findByRole('button', { name: /Create Course/i });
-        expect(createCourseButton).toBeInTheDocument();
-    
-        // ボタンをクリック
-        fireEvent.click(createCourseButton);
-    
-        // ページ遷移の確認 (モックナビゲーションを考慮する必要がある場合も)
-        expect(window.location.pathname).toBe('/create-course');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Create Course/i })).toBeInTheDocument();
     });
-    
+  });
 
+  it('navigates to CourseForm when Create Course button is clicked', async () => {
+    const mockCourses = [
+      { id: 1, title: 'Course 1', description: 'Description 1' },
+    ];
+    apiClient.get.mockResolvedValueOnce({ data: mockCourses });
+
+    await act(async () => {
+      renderWithProvider(<Courses />);
+    });
+
+    const createCourseButton = await screen.findByRole('button', {
+      name: /Create Course/i,
+    });
+    expect(createCourseButton).toBeInTheDocument();
+
+    fireEvent.click(createCourseButton);
+
+    // Verify that the navigation happens
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/create-course');
+    });
+  });
 });

@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import moduleReducer, {
   fetchModules,
@@ -6,10 +7,9 @@ import moduleReducer, {
   deleteModule,
 } from './moduleSlice';
 import apiClient from '../../utils/apiClient';
-import thunk from 'redux-thunk';
 
 // API呼び出しをモック
-jest.mock('../../utils/apiClient');
+vi.mock('../../utils/apiClient');
 
 describe('moduleSlice', () => {
   let store;
@@ -24,22 +24,22 @@ describe('moduleSlice', () => {
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
-  test('fetchModules - fulfilled', async () => {
+  it('fetchModules - fulfilled', async () => {
     const mockData = [{ id: 1, title: 'Test Module' }];
     apiClient.get.mockResolvedValue({ data: mockData });
 
     await store.dispatch(fetchModules(1));
     const state = store.getState().module;
-    
+
     expect(state.modules).toEqual(mockData);
     expect(state.loading).toBe(false);
     expect(state.error).toBeNull();
   });
 
-  test('fetchModules - rejected', async () => {
+  it('fetchModules - rejected', async () => {
     apiClient.get.mockRejectedValue({ message: 'Error fetching modules' });
 
     await store.dispatch(fetchModules(1));
@@ -50,7 +50,7 @@ describe('moduleSlice', () => {
     expect(state.error).toBe('Error fetching modules');
   });
 
-  test('createModule - fulfilled', async () => {
+  it('createModule - fulfilled', async () => {
     const newModule = { id: 2, title: 'New Module' };
     apiClient.post.mockResolvedValue({ data: newModule });
 
@@ -61,7 +61,7 @@ describe('moduleSlice', () => {
     expect(state.error).toBeNull();
   });
 
-  test('updateModule - fulfilled', async () => {
+  it('updateModule - fulfilled', async () => {
     const existingModule = { id: 1, title: 'Existing Module' };
     store.dispatch({ type: fetchModules.fulfilled.type, payload: [existingModule] });
     const updatedModule = { id: 1, title: 'Updated Module' };
@@ -75,7 +75,7 @@ describe('moduleSlice', () => {
     expect(state.error).toBeNull();
   });
 
-  test('deleteModule - fulfilled', async () => {
+  it('deleteModule - fulfilled', async () => {
     const existingModule = { id: 1, title: 'Module to Delete' };
     store.dispatch({ type: fetchModules.fulfilled.type, payload: [existingModule] });
     apiClient.delete.mockResolvedValue();
