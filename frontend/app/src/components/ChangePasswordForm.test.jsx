@@ -4,9 +4,11 @@ import '@testing-library/jest-dom';
 import ChangePasswordForm from './ChangePasswordForm';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import userReducer from '../features/user/userSlice';
 import apiClient from '../utils/apiClient';
 import { MemoryRouter } from 'react-router-dom';
+
+// Mock NavBar
+jest.mock('../components/NavBar', () => () => <div data-testid="mocked-navbar" />);
 
 // Mock apiClient
 jest.mock('../utils/apiClient');
@@ -15,9 +17,13 @@ jest.mock('../utils/apiClient');
 const renderWithProvider = (component) => {
   const store = configureStore({
     reducer: {
-      user: userReducer,
+      user: () => ({
+        userInfo: { name: 'Test User', id: 1 },
+      }),
+      notifications: () => ({
+        notifications: [],
+      }),
     },
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware(),
   });
 
   return render(
@@ -28,10 +34,14 @@ const renderWithProvider = (component) => {
 };
 
 describe('ChangePasswordForm Component', () => {
+  test('API client should use the correct base URL', () => {
+    const expectedUrl = "http://127.0.0.1:8000";
+    expect(apiClient.defaults.baseURL.replace(/\/$/, '')).toBe(expectedUrl.replace(/\/$/, ''));
+  });
+
   test('renders the form fields', () => {
     renderWithProvider(<ChangePasswordForm />);
 
-    // 正しいフィールドを取得するため、getAllByLabelTextを使用
     expect(screen.getByLabelText(/Current Password/i)).toBeInTheDocument();
 
     const newPasswordFields = screen.getAllByLabelText(/New Password/i);
@@ -43,46 +53,38 @@ describe('ChangePasswordForm Component', () => {
   });
 
   test('handles successful password change', async () => {
-    // Mock successful response
     apiClient.put.mockResolvedValueOnce({});
 
     renderWithProvider(<ChangePasswordForm />);
 
     fireEvent.change(screen.getByLabelText(/Current Password/i), { target: { value: 'oldPass' } });
-    
     const newPasswordFields = screen.getAllByLabelText(/New Password/i);
     fireEvent.change(newPasswordFields[0], { target: { value: 'newPass' } });
     fireEvent.change(screen.getByLabelText(/Confirm New Password/i), { target: { value: 'newPass' } });
 
-    // Click change password button
     fireEvent.click(screen.getByRole('button', { name: /Change Password/i }));
 
-    // Wait for the API call
     await waitFor(() => {
-        expect(apiClient.put).toHaveBeenCalledWith('/accounts/change-password/', {
-            current_password: 'oldPass',
-            new_password: 'newPass',
-        });
+      expect(apiClient.put).toHaveBeenCalledWith('/accounts/change-password/', {
+        current_password: 'oldPass',
+        new_password: 'newPass',
+      });
     });
-});
+  });
 
-  
   test('displays error messages when passwords do not match', async () => {
     renderWithProvider(<ChangePasswordForm />);
-  
+
     fireEvent.change(screen.getByLabelText(/Current Password/i), { target: { value: 'oldPass' } });
-  
     const newPasswordFields = screen.getAllByLabelText(/New Password/i);
     fireEvent.change(newPasswordFields[0], { target: { value: 'newPass' } });
     fireEvent.change(screen.getByLabelText(/Confirm New Password/i), { target: { value: 'wrongPass' } });
-  
-    // Change password buttonをクリック
+
     fireEvent.click(screen.getByRole('button', { name: /Change Password/i }));
-  
-    // エラーメッセージの確認
+
     expect(await screen.findByText(/New password and confirmation do not match/i)).toBeInTheDocument();
   });
-  
+
   test('handles failed password change', async () => {
     const mockErrorMessage = 'Password change failed';
     apiClient.put.mockRejectedValueOnce(new Error(JSON.stringify({ form: mockErrorMessage })));
@@ -90,18 +92,14 @@ describe('ChangePasswordForm Component', () => {
     renderWithProvider(<ChangePasswordForm />);
 
     fireEvent.change(screen.getByLabelText(/Current Password/i), { target: { value: 'oldPass' } });
-    
     const newPasswordFields = screen.getAllByLabelText(/New Password/i);
     fireEvent.change(newPasswordFields[0], { target: { value: 'newPass' } });
     fireEvent.change(screen.getByLabelText(/Confirm New Password/i), { target: { value: 'newPass' } });
 
-    // Click change password button
     fireEvent.click(screen.getByRole('button', { name: /Change Password/i }));
 
-    // Check for error message display
     await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent(mockErrorMessage);
+      expect(screen.getByRole('alert')).toHaveTextContent(mockErrorMessage);
     });
-});
-  
+  });
 });

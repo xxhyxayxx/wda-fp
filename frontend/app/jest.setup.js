@@ -1,1 +1,4 @@
-process.env.VITE_API_URL = 'http://127.0.0.1:8000/';
+import dotenv from 'dotenv';
+
+// Jestテスト環境で.env.testを読み込む
+dotenv.config({ path: '.env.test' });

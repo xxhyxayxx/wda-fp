@@ -124,7 +124,6 @@ const ProfileUpdateForm = () => {
 
   return (
     <div>
-      <NavBar />
       <div className={styles.pageContainer}>
         <div className={styles.formContainer}>
           <h1 className={styles.title}>Update Profile</h1>
