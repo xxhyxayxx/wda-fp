@@ -1,3 +1,4 @@
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import notificationReducer, {
     fetchNotifications,
@@ -7,18 +8,20 @@ import notificationReducer, {
     initializeWebSocket,
     closeWebSocket,
     notificationService,
-    resetNotificationService
+    resetNotificationService,
 } from './notificationSlice';
 import apiClient from '../../utils/apiClient';
 import NotificationService from '../../utils/notificationService';
 
 // API 呼び出しをモック
-jest.mock('../../utils/apiClient');
-jest.mock('../../utils/notificationService', () => {
-    return jest.fn().mockImplementation(() => ({
-      connect: jest.fn(),
-      disconnect: jest.fn(),
-    }));
+vi.mock('../../utils/apiClient');
+vi.mock('../../utils/notificationService', () => {
+    return {
+        default: vi.fn().mockImplementation(() => ({
+            connect: vi.fn(),
+            disconnect: vi.fn(),
+        })),
+    };
 });
 
 describe('notificationSlice', () => {
@@ -38,19 +41,18 @@ describe('notificationSlice', () => {
 
         // NotificationServiceのモックをセットアップ
         mockNotificationService = {
-            connect: jest.fn(),
-            disconnect: jest.fn(),
+            connect: vi.fn(),
+            disconnect: vi.fn(),
         };
         NotificationService.mockImplementation(() => mockNotificationService);
     });
 
     afterEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         resetNotificationService();
     });
 
-    // Fetch Notifications Test
-    test('fetchNotifications - fulfilled', async () => {
+    it('fetchNotifications - fulfilled', async () => {
         const mockNotifications = [
             { id: 1, title: 'Notification 1', message: 'Message 1', is_read: false },
             { id: 2, title: 'Notification 2', message: 'Message 2', is_read: true },
@@ -65,8 +67,7 @@ describe('notificationSlice', () => {
         expect(state.error).toBeNull();
     });
 
-    // Add Notification Test
-    test('addNotification - adds a new notification', () => {
+    it('addNotification - adds a new notification', () => {
         const newNotification = { id: 3, title: 'New Notification', message: 'New Message', is_read: false };
 
         store.dispatch(addNotification(newNotification));
@@ -75,21 +76,19 @@ describe('notificationSlice', () => {
         expect(state.notifications[0]).toEqual(newNotification); // 新しい通知が先頭に追加される
     });
 
-    test('markAsReadLocally - updates the is_read field locally', () => {
+    it('markAsReadLocally - updates the is_read field locally', () => {
         const mockNotifications = [
             { id: 1, title: 'Notification 1', message: 'Message 1', is_read: false },
         ];
         store.dispatch(fetchNotifications.fulfilled(mockNotifications)); // 初期状態を設定
-    
+
         store.dispatch(markAsReadLocally(1)); // `markAsReadLocally` をディスパッチ
         const state = store.getState().notifications;
-    
+
         expect(state.notifications[0].is_read).toBe(true); // ローカルで既読に更新されていることを確認
     });
-    
 
-    // Mark Notification as Read (Server) Test
-    test('markNotificationAsRead - updates the is_read field on the server', async () => {
+    it('markNotificationAsRead - updates the is_read field on the server', async () => {
         const notificationId = 1;
         const mockNotifications = [
             { id: 1, title: 'Notification 1', message: 'Message 1', is_read: false },
@@ -105,21 +104,21 @@ describe('notificationSlice', () => {
         expect(state.notifications[0].is_read).toBe(true); // サーバー側の更新後に既読になっていることを確認
     });
 
-    test('initializeWebSocket - initializes WebSocket connection via NotificationService', () => {
+    it('initializeWebSocket - initializes WebSocket connection via NotificationService', () => {
         store.dispatch(initializeWebSocket({ url: 'ws://localhost:8000/ws/notifications/' }));
-    
+
         // `notificationService` が初期化されていることを確認
         expect(notificationService).not.toBeNull();
         expect(mockNotificationService.connect).toHaveBeenCalledTimes(1);
     });
-    
-    test('closeWebSocket - closes WebSocket connection via NotificationService', () => {
+
+    it('closeWebSocket - closes WebSocket connection via NotificationService', () => {
         store.dispatch(initializeWebSocket({ url: 'ws://localhost:8000/ws/notifications/' }));
-    
+
         console.log('NotificationService instance:', notificationService);
-    
+
         store.dispatch(closeWebSocket());
-    
+
         // `disconnect` メソッドが呼び出されたことを確認
         expect(mockNotificationService.disconnect).toHaveBeenCalledTimes(1);
         expect(notificationService).toBeNull();

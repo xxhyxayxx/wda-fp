@@ -1,0 +1,120 @@
+.navMenu {
+    padding: 10px 40px;
+    background-color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* 左側セクション: ロゴと検索バー */
+.leftSection {
+    display: flex;
+    align-items: center;
+}
+
+/* ロゴ */
+.logo {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: "Quicksand", sans-serif;
+    color: var(--purple);
+    margin-right: 20px; /* 検索バーとのスペース */
+}
+
+/* 検索バー */
+.searchBarContainer {
+    width: 300px; /* 必要に応じて調整 */
+    position: relative;
+}
+
+/* ナビゲーションリンク */
+.navLinks {
+    display: flex;
+    align-items: center;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.navLinks li {
+    margin: 0 28px 0 0;
+}
+
+/* プロフィール画像 */
+.profileImage {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.profileLink {
+    display: flex;
+    align-items: center;
+}
+
+.navLink {
+    text-decoration: none;
+    color: #333;
+    margin-right: 20px;
+    position: relative;
+}
+
+.unreadIndicator {
+    position: absolute;
+    top: -5px;
+    right: -10px;
+    min-width: 16px;
+    height: 16px;
+    background-color: red;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 50%;
+    padding: 2px;
+}
+
+/* 検索バー用追加スタイル */
+.searchBarContainer input {
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 100%;
+    font-size: 14px;
+    outline: none;
+}
+
+.searchBarContainer input:focus {
+    border-color: var(--indigo);
+    box-shadow: 0 0 4px rgba(0, 123, 255, 0.4);
+}
+
+.suggestionsList {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.suggestionItem {
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.suggestionItem:hover {
+    background-color: #f8f9fa;
+}

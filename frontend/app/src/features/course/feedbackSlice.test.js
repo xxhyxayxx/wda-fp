@@ -1,9 +1,10 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import feedbackReducer, { fetchFeedback, createFeedback } from './feedbackSlice';
 import apiClient from '../../utils/apiClient';
 
 // Mocking apiClient
-jest.mock('../../utils/apiClient');
+vi.mock('../../utils/apiClient');
 
 let store;
 
@@ -17,7 +18,7 @@ beforeEach(() => {
 });
 
 describe('feedbackSlice', () => {
-  test('should fetch feedback successfully', async () => {
+  it('should fetch feedback successfully', async () => {
     const mockFeedback = [
       { id: 1, comment: 'Great course!', rating: 5 },
       { id: 2, comment: 'Very informative.', rating: 4 },
@@ -31,7 +32,7 @@ describe('feedbackSlice', () => {
     expect(state.error).toBeNull();
   });
 
-  test('should handle fetch feedback failure', async () => {
+  it('should handle fetch feedback failure', async () => {
     const mockError = 'Failed to fetch feedback';
     apiClient.get.mockRejectedValueOnce(new Error(mockError));
 
@@ -41,7 +42,7 @@ describe('feedbackSlice', () => {
     expect(state.error).toBe(mockError);
   });
 
-  test('should create feedback successfully', async () => {
+  it('should create feedback successfully', async () => {
     const newFeedback = { id: 3, comment: 'Excellent course!', rating: 5, enrollment_id: 1 };
     const enrollmentId = 1;
 
@@ -61,7 +62,7 @@ describe('feedbackSlice', () => {
     );
   });
 
-  test('should handle create feedback failure', async () => {
+  it('should handle create feedback failure', async () => {
     const mockError = 'Failed to create feedback';
     const enrollmentId = 1;
 

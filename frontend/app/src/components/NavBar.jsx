@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import styles from './styles/NavBar.module.css';
 import LogoutButton from './LogoutButton';
+import SearchBar from './SearchBar'; // SearchBarコンポーネントをインポート
 
 const NavBar = () => {
     const { userInfo } = useSelector((state) => state.user);
@@ -13,9 +14,13 @@ const NavBar = () => {
 
     return (
         <nav className={styles.navMenu}>
-            <Link to="/">
-                <h1 className={styles.logo}>E-Learning</h1>
-            </Link>
+            <div className={styles.leftSection}>
+                <Link to="/">
+                    <h1 className={styles.logo}>E-Learning</h1>
+                </Link>
+                {/* 検索バー */}
+                <SearchBar />
+            </div>
             <ul className={styles.navLinks}>
                 {/* Teacher用リンク */}
                 {userInfo?.user_type === 'teacher' && (

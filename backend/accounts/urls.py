@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import UserRegistrationAPIView, UserProfileUpdateAPIView, LogoutAPIView, ChangePasswordAPIView, NotificationListAPIView, AdminBulkNotificationAPIView, MarkNotificationAsReadAPIView, ReleaseNewCourseAPIView
+from .views import UserRegistrationAPIView, UserProfileUpdateAPIView, LogoutAPIView, ChangePasswordAPIView, NotificationListAPIView, AdminBulkNotificationAPIView, MarkNotificationAsReadAPIView, ReleaseNewCourseAPIView, UserSearchAPIView, UserDetailAPIView
 from rest_framework.authtoken.views import obtain_auth_token
 
 urlpatterns = [
@@ -12,4 +12,6 @@ urlpatterns = [
     path('notifications/admin-bulk/', AdminBulkNotificationAPIView.as_view(), name='admin-bulk-notify'),
     path('notifications/<int:notification_id>/mark-as-read/', MarkNotificationAsReadAPIView.as_view(), name='notification-mark-as-read'),
     path('courses/release/', ReleaseNewCourseAPIView.as_view(), name='release-new-course'),
+    path('search/', UserSearchAPIView.as_view(), name='user-search'),
+    path('users/<int:id>/', UserDetailAPIView.as_view(), name='user-detail'),
 ]

@@ -22,7 +22,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ('email', 'name', 'user_type', 'profile_image')
+        fields = ('id', 'email', 'name', 'user_type', 'profile_image')  # 'id' を追加
         read_only_fields = ('user_type',)  # user_typeを読み取り専用に設定
 
     def validate(self, data):

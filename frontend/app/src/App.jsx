@@ -28,6 +28,7 @@ import StudentDetailPage from './components/StudentDetailPage';
 import NotificationPage from './components/NotificationPage';
 import NotificationDetailPage from './components/NotificationDetailPage';
 import NavBar from './components/NavBar'; // ナビバーをインポート
+import SearchResultPage from './components/SearchResultPage';
 
 const App = () => {
     const dispatch = useDispatch();
@@ -202,6 +203,14 @@ const App = () => {
                             <NotificationDetailPage />
                         </PrivateRoute>
                     }
+                />
+                <Route
+                  path="/profile/:id"
+                  element={
+                    <PrivateRoute>
+                      <SearchResultPage />
+                    </PrivateRoute>
+                  }
                 />
             </Routes>
         </Router>

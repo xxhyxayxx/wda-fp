@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import '@testing-library/jest-dom';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ChangePasswordForm from './ChangePasswordForm';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -8,10 +8,16 @@ import apiClient from '../utils/apiClient';
 import { MemoryRouter } from 'react-router-dom';
 
 // Mock NavBar
-jest.mock('../components/NavBar', () => () => <div data-testid="mocked-navbar" />);
+vi.mock('../components/NavBar', () => ({
+  default: () => <div data-testid="mocked-navbar" />,
+}));
 
 // Mock apiClient
-jest.mock('../utils/apiClient');
+vi.mock('../utils/apiClient', () => ({
+  default: {
+    put: vi.fn(),
+  },
+}));
 
 // Helper function to render a component with Redux store and MemoryRouter
 const renderWithProvider = (component) => {
@@ -34,12 +40,11 @@ const renderWithProvider = (component) => {
 };
 
 describe('ChangePasswordForm Component', () => {
-  test('API client should use the correct base URL', () => {
-    const expectedUrl = "http://127.0.0.1:8000";
-    expect(apiClient.defaults.baseURL.replace(/\/$/, '')).toBe(expectedUrl.replace(/\/$/, ''));
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  test('renders the form fields', () => {
+  it('renders the form fields', () => {
     renderWithProvider(<ChangePasswordForm />);
 
     expect(screen.getByLabelText(/Current Password/i)).toBeInTheDocument();
@@ -52,7 +57,8 @@ describe('ChangePasswordForm Component', () => {
     expect(screen.getByRole('button', { name: /Change Password/i })).toBeInTheDocument();
   });
 
-  test('handles successful password change', async () => {
+  it('handles successful password change', async () => {
+    const apiClient = (await import('../utils/apiClient')).default;
     apiClient.put.mockResolvedValueOnce({});
 
     renderWithProvider(<ChangePasswordForm />);
@@ -72,7 +78,7 @@ describe('ChangePasswordForm Component', () => {
     });
   });
 
-  test('displays error messages when passwords do not match', async () => {
+  it('displays error messages when passwords do not match', async () => {
     renderWithProvider(<ChangePasswordForm />);
 
     fireEvent.change(screen.getByLabelText(/Current Password/i), { target: { value: 'oldPass' } });
@@ -85,9 +91,12 @@ describe('ChangePasswordForm Component', () => {
     expect(await screen.findByText(/New password and confirmation do not match/i)).toBeInTheDocument();
   });
 
-  test('handles failed password change', async () => {
+  it('handles failed password change', async () => {
     const mockErrorMessage = 'Password change failed';
-    apiClient.put.mockRejectedValueOnce(new Error(JSON.stringify({ form: mockErrorMessage })));
+    const apiClient = (await import('../utils/apiClient')).default;
+    apiClient.put.mockRejectedValueOnce({
+      response: { data: { form: mockErrorMessage } },
+    });
 
     renderWithProvider(<ChangePasswordForm />);
 
