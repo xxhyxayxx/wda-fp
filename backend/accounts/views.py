@@ -141,7 +141,7 @@ class UserSearchAPIView(ListAPIView):
         ).distinct()
 
         # 最大10件のみ返す
-        return queryset.only('id', 'name', 'email')[:10]
+        return queryset[:10]  # .only() を削除
 
 class UserDetailAPIView(RetrieveAPIView):
     """
