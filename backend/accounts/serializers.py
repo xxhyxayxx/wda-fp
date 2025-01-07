@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser, Notification
+from .models import CustomUser, Notification, Message
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -56,3 +56,25 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ('id', 'user', 'title', 'message', 'link', 'event_type', 'created_at', 'is_read')
         read_only_fields = ('id', 'user', 'created_at')  # is_read を書き込み可能にしない場合はここに追加
+
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ('id', 'sender', 'receiver', 'content', 'timestamp', 'is_read')
+        read_only_fields = ('id', 'timestamp', 'sender')  # senderは自動的に設定
+
+    def validate(self, data):
+        # リクエストユーザーをsenderとして設定
+        sender = self.context['request'].user
+        receiver = data.get('receiver')
+
+        # senderとreceiverが異なる必要がある
+        if sender == receiver:
+            raise serializers.ValidationError({"receiver": "Sender and receiver must be different."})
+
+        # senderをデータに追加
+        data['sender'] = sender
+        return data
+
+
+

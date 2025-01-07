@@ -1,6 +1,6 @@
 from rest_framework import generics, permissions
-from .models import CustomUser, Notification
-from .serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer, NotificationSerializer
+from .models import CustomUser, Notification, Message
+from .serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer, NotificationSerializer, MessageSerializer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -151,3 +151,40 @@ class UserDetailAPIView(RetrieveAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]  # 認証が必要
     lookup_field = 'id'  # URLでユーザーIDを指定
+
+class MessageListAPIView(ListAPIView):
+    """ログインユーザーと特定の相手とのメッセージ履歴を取得"""
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        receiver_id = self.request.query_params.get('receiver')
+        if not receiver_id:
+            return Message.objects.none()  # receiverが指定されていない場合は空リストを返す
+        
+        return Message.objects.filter(
+            (Q(sender=self.request.user) & Q(receiver_id=receiver_id)) |
+            (Q(sender_id=receiver_id) & Q(receiver=self.request.user))
+        ).order_by('timestamp')
+
+class SendMessageAPIView(generics.CreateAPIView):
+    """新しいメッセージを送信する"""
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # sender をリクエストユーザーとして明示的に設定
+        serializer.save(sender=self.request.user)
+
+class MarkMessageAsReadAPIView(APIView):
+    """特定のメッセージを既読にする"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, message_id):
+        try:
+            message = Message.objects.get(id=message_id, receiver=request.user)
+            message.is_read = True
+            message.save(update_fields=['is_read'])
+            return Response({"detail": "Message marked as read."}, status=200)
+        except Message.DoesNotExist:
+            return Response({"error": "Message not found."}, status=404)

@@ -1,9 +1,10 @@
 from django.test import TestCase
-from accounts.models import CustomUser, Notification
-from accounts.serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer, NotificationSerializer
+from accounts.models import CustomUser, Notification, Message
+from accounts.serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer, NotificationSerializer, MessageSerializer
 from django.test import RequestFactory
 from rest_framework import serializers
 from dateutil.parser import isoparse
+from rest_framework.test import APIRequestFactory
 
 class UserRegistrationSerializerTest(TestCase):
     def test_user_registration_serializer_with_valid_data(self):
@@ -308,3 +309,137 @@ class NotificationSerializerTest(TestCase):
         self.assertTrue(serializer.is_valid())
         updated_notification = serializer.save()
         self.assertTrue(updated_notification.is_read)  # 部分更新で is_read が変更されていることを確認
+
+class MessageSerializerTest(TestCase):
+    def setUp(self):
+        self.sender = CustomUser.objects.create_user(
+            email='sender@example.com',
+            password='password123',
+            user_type='student'
+        )
+        self.receiver = CustomUser.objects.create_user(
+            email='receiver@example.com',
+            password='password456',
+            user_type='student'
+        )
+        self.message = Message.objects.create(
+            sender=self.sender,
+            receiver=self.receiver,
+            content="Test message content"
+        )
+        self.assertFalse(self.message.is_read)  # デフォルト値確認
+
+    def test_message_serializer_with_valid_data(self):
+        serializer = MessageSerializer(instance=self.message)
+        
+        # 各フィールドを個別に比較
+        self.assertEqual(serializer.data['id'], self.message.id)
+        self.assertEqual(serializer.data['sender'], self.sender.id)
+        self.assertEqual(serializer.data['receiver'], self.receiver.id)
+        self.assertEqual(serializer.data['content'], self.message.content)
+        
+        # タイムゾーンを正規化してtimestampを比較
+        serialized_timestamp = isoparse(serializer.data['timestamp'])
+        expected_timestamp = isoparse(self.message.timestamp.isoformat())
+        self.assertEqual(serialized_timestamp, expected_timestamp)
+
+        self.assertEqual(serializer.data['is_read'], self.message.is_read)
+
+    def test_message_serializer_excludes_read_only_fields(self):
+        data = {
+            'id': 999,
+            'timestamp': '2025-01-01T00:00:00Z',
+            'is_read': True,  # 入力データとして渡されるが無視されるべき
+            'sender': self.sender.id,
+            'receiver': self.receiver.id,
+            'content': "This is a test message"
+        }
+        serializer = MessageSerializer(data=data, context={'request': self.request})
+        self.assertTrue(serializer.is_valid())
+
+        # `is_read` を明示的に設定する場合
+        message = serializer.save(sender=self.sender, is_read=False)
+        
+        self.assertNotEqual(message.id, 999)  # id は自動的に設定されるべき
+        self.assertFalse(message.is_read)  # is_read は明示的に False に設定されていることを確認
+
+
+    def test_message_serializer_partial_update(self):
+        data = {'is_read': True}
+        serializer = MessageSerializer(instance=self.message, data=data, partial=True)
+        self.assertTrue(serializer.is_valid())
+        updated_message = serializer.save()
+        self.assertTrue(updated_message.is_read)
+
+    def test_message_serializer_validates_sender_and_receiver_are_different(self):
+        data = {
+            'sender': self.sender.id,
+            'receiver': self.sender.id,
+            'content': "This message has the same sender and receiver"
+        }
+        serializer = MessageSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('receiver', serializer.errors)
+
+class MessageSerializerTest(TestCase):
+    def setUp(self):
+        self.sender = CustomUser.objects.create_user(
+            email='sender@example.com',
+            password='password123',
+            user_type='student'
+        )
+        self.receiver = CustomUser.objects.create_user(
+            email='receiver@example.com',
+            password='password456',
+            user_type='student'
+        )
+        self.message = Message.objects.create(
+            sender=self.sender,
+            receiver=self.receiver,
+            content="Test message content"
+        )
+        self.factory = APIRequestFactory()
+        self.request = self.factory.post('/messages/', {}, format='json')
+        self.request.user = self.sender
+
+    def test_message_serializer_with_valid_data(self):
+        serializer = MessageSerializer(instance=self.message, context={'request': self.request})
+        
+        self.assertEqual(serializer.data['id'], self.message.id)
+        self.assertEqual(serializer.data['sender'], self.sender.id)
+        self.assertEqual(serializer.data['receiver'], self.receiver.id)
+        self.assertEqual(serializer.data['content'], self.message.content)
+        
+        serialized_timestamp = isoparse(serializer.data['timestamp'])
+        expected_timestamp = isoparse(self.message.timestamp.isoformat())
+        self.assertEqual(serialized_timestamp, expected_timestamp)
+        self.assertEqual(serializer.data['is_read'], self.message.is_read)
+
+    def test_message_serializer_excludes_read_only_fields(self):
+        data = {
+            'receiver': self.receiver.id,
+            'content': "This is a test message"
+        }
+        serializer = MessageSerializer(data=data, context={'request': self.request})
+        self.assertTrue(serializer.is_valid())
+        message = serializer.save()
+        self.assertEqual(message.sender, self.sender)  # senderがリクエストユーザーに設定されていることを確認
+        self.assertEqual(message.receiver, self.receiver)
+        self.assertFalse(message.is_read)
+
+    def test_message_serializer_partial_update(self):
+        data = {'is_read': True}
+        serializer = MessageSerializer(instance=self.message, data=data, partial=True, context={'request': self.request})
+        self.assertTrue(serializer.is_valid())
+        updated_message = serializer.save()
+        self.assertTrue(updated_message.is_read)
+
+    def test_message_serializer_validates_sender_and_receiver_are_different(self):
+        data = {
+            'sender': self.sender.id,
+            'receiver': self.sender.id,
+            'content': "This message has the same sender and receiver"
+        }
+        serializer = MessageSerializer(data=data, context={'request': self.request})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('receiver', serializer.errors)
