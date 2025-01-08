@@ -7,6 +7,7 @@ import enrollmentReducer from './features/course/enrollmentSlice';
 import moduleProgressReducer from './features/course/moduleProgressSlice';
 import feedbackReducer from './features/course/feedbackSlice';
 import notificationReducer from './features/notification/notificationSlice';
+import messageReducer from './features/message/messageSlice'; // messageSlice をインポート
 
 export const store = configureStore({
   reducer: {
@@ -18,5 +19,6 @@ export const store = configureStore({
     moduleProgress: moduleProgressReducer, // moduleProgress スライス
     feedback: feedbackReducer,
     notifications: notificationReducer,
+    message: messageReducer,
   },
 });

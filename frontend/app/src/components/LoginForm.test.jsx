@@ -9,7 +9,7 @@ import apiClient from '../utils/apiClient';
 import { BrowserRouter } from 'react-router-dom';
 
 // Mock apiClient
-jest.mock('../utils/apiClient');
+vi.mock('../utils/apiClient');
 
 // Function to render a component with Redux store
 const renderWithProvider = (component) => {
