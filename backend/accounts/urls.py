@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import UserRegistrationAPIView, UserProfileUpdateAPIView, LogoutAPIView, ChangePasswordAPIView, NotificationListAPIView, AdminBulkNotificationAPIView, MarkNotificationAsReadAPIView, ReleaseNewCourseAPIView, UserSearchAPIView, UserDetailAPIView, MessageListAPIView, SendMessageAPIView, MarkMessageAsReadAPIView
+from .views import UserRegistrationAPIView, UserProfileUpdateAPIView, LogoutAPIView, ChangePasswordAPIView, NotificationListAPIView, AdminBulkNotificationAPIView, MarkNotificationAsReadAPIView, ReleaseNewCourseAPIView, UserSearchAPIView, UserDetailAPIView, MessageListAPIView, SendMessageAPIView, MarkMessageAsReadAPIView, ConversationListAPIView
 from rest_framework.authtoken.views import obtain_auth_token
 
 urlpatterns = [
@@ -17,4 +17,5 @@ urlpatterns = [
     path('messages/', MessageListAPIView.as_view(), name='message-list'),
     path('messages/send/', SendMessageAPIView.as_view(), name='message-send'),
     path('messages/<int:message_id>/mark-as-read/', MarkMessageAsReadAPIView.as_view(), name='message-mark-as-read'),
+    path('conversations/', ConversationListAPIView.as_view(), name='conversation-list'),
 ]

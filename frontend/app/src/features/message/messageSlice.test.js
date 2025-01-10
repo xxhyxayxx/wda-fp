@@ -4,6 +4,7 @@ import messageReducer, {
   fetchMessages,
   sendMessage,
   markMessageAsRead,
+  fetchConversations,
   resetMessages,
 } from './messageSlice';
 import apiClient from '../../utils/apiClient';
@@ -28,6 +29,41 @@ describe('messageSlice', () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+  });
+
+  // fetchConversations のテスト
+  it('fetchConversations - fulfilled', async () => {
+    const mockConversations = [
+      {
+        other_user: { id: 2, name: 'User 2', profile_image: null },
+        last_message: { id: 1, content: 'Hello', timestamp: '2025-01-10T00:00:00Z', is_read: false },
+      },
+      {
+        other_user: { id: 3, name: 'User 3', profile_image: '/media/user3.png' },
+        last_message: { id: 2, content: 'Hi there', timestamp: '2025-01-10T01:00:00Z', is_read: true },
+      },
+    ];
+    apiClient.get.mockResolvedValue({ data: mockConversations });
+
+    await store.dispatch(fetchConversations());
+    const state = store.getState().messages;
+
+    expect(apiClient.get).toHaveBeenCalledWith('/accounts/conversations/');
+    expect(state.conversations).toEqual(mockConversations);
+    expect(state.status).toBe('succeeded');
+    expect(state.error).toBeNull();
+  });
+
+  it('fetchConversations - rejected', async () => {
+    apiClient.get.mockRejectedValue(new Error('Failed to fetch conversations'));
+
+    await store.dispatch(fetchConversations());
+    const state = store.getState().messages;
+
+    expect(apiClient.get).toHaveBeenCalledWith('/accounts/conversations/');
+    expect(state.conversations).toEqual([]);
+    expect(state.status).toBe('failed');
+    expect(state.error).toBe('Failed to fetch conversations');
   });
 
   it('fetchMessages - fulfilled', async () => {
@@ -75,19 +111,19 @@ describe('messageSlice', () => {
   });
 
   it('sendMessage - rejected', async () => {
-    apiClient.post.mockRejectedValue(new Error('Failed to send message'));
+    apiClient.post.mockRejectedValue({ response: null }); // エラーオブジェクトの構造を確認
 
     await store.dispatch(sendMessage({ receiver: 2, content: 'New message' }));
     const state = store.getState().messages;
 
     expect(apiClient.post).toHaveBeenCalledWith('/accounts/messages/send/', {
-      receiver: 2,
-      content: 'New message',
+        receiver: 2,
+        content: 'New message',
     });
     expect(state.messages).toEqual([]);
     expect(state.status).toBe('failed');
-    expect(state.error).toBe('Failed to send message');
-  });
+    expect(state.error).toBe('Failed to send message'); // このメッセージが設定されることを確認
+});
 
   it('markMessageAsRead - fulfilled', async () => {
     const mockMessages = [
@@ -102,6 +138,7 @@ describe('messageSlice', () => {
       preloadedState: {
         messages: {
           messages: mockMessages,
+          conversations: [],
           status: 'idle',
           error: null,
         },
@@ -134,6 +171,7 @@ describe('messageSlice', () => {
     const state = store.getState().messages;
 
     expect(state.messages).toEqual([]);
+    expect(state.conversations).toEqual([]);
     expect(state.status).toBe('idle');
     expect(state.error).toBeNull();
   });

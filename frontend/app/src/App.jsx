@@ -29,7 +29,7 @@ import NotificationPage from './components/NotificationPage';
 import NotificationDetailPage from './components/NotificationDetailPage';
 import NavBar from './components/NavBar'; // ナビバーをインポート
 import SearchResultPage from './components/SearchResultPage';
-import MessageList from './components/MessageList';
+import MessageList from './components/ConversationList';
 import MessageDetail from './components/MessageDetail';
 
 const App = () => {

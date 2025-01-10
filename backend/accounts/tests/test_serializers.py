@@ -1,6 +1,6 @@
 from django.test import TestCase
 from accounts.models import CustomUser, Notification, Message
-from accounts.serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer, NotificationSerializer, MessageSerializer
+from accounts.serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer, NotificationSerializer, MessageSerializer, ConversationSerializer, LastMessageSerializer
 from django.test import RequestFactory
 from rest_framework import serializers
 from dateutil.parser import isoparse
@@ -50,10 +50,14 @@ class UserRegistrationSerializerTest(TestCase):
             'password': 'testpassword',
             'user_type': 'student'
         }
-        serializer = UserRegistrationSerializer(data=data)
+        request = APIRequestFactory().post('/register/')
+        serializer = UserRegistrationSerializer(data=data, context={'request': request})
         self.assertTrue(serializer.is_valid())
         user = serializer.save()
-        self.assertEqual(user.profile_image.name, 'profile_images/default_profile.png')
+
+        # プロフィール画像がデフォルト画像であることを確認
+        profile_image_url = UserProfileSerializer(user, context={'request': request}).data['profile_image']
+        self.assertTrue(profile_image_url.endswith('profile_images/default_profile.png'))  # 絶対URLのチェック
 
     def test_user_registration_serializer_with_invalid_email(self):
         """無効なメールアドレスが渡された場合のバリデーションテスト"""
@@ -163,8 +167,11 @@ class UserProfileSerializerTest(TestCase):
         serializer = UserProfileSerializer(instance=self.user, data=data, partial=True, context={'request': request})
         self.assertTrue(serializer.is_valid())
         updated_user = serializer.save()
-        self.assertEqual(updated_user.profile_image.name, 'profile_images/default_profile.png')
-    
+
+        # プロフィール画像がデフォルト画像であることを確認
+        profile_image_url = serializer.data['profile_image']
+        self.assertTrue(profile_image_url.endswith('profile_images/default_profile.png'))  # 絶対URLのチェック
+
     def test_profile_serializer_user_type_read_only(self):
         """user_typeが読み取り専用であることをテスト"""
         data = {
@@ -443,3 +450,59 @@ class MessageSerializerTest(TestCase):
         serializer = MessageSerializer(data=data, context={'request': self.request})
         self.assertFalse(serializer.is_valid())
         self.assertIn('receiver', serializer.errors)
+
+class ConversationSerializerTest(TestCase):
+    def setUp(self):
+        self.sender = CustomUser.objects.create_user(
+            email='sender@example.com',
+            password='password123',
+            user_type='student'
+        )
+        self.receiver = CustomUser.objects.create_user(
+            email='receiver@example.com',
+            password='password456',
+            user_type='student'
+        )
+        self.message = Message.objects.create(
+            sender=self.sender,
+            receiver=self.receiver,
+            content="Test message content"
+        )
+
+    def test_last_message_serializer(self):
+        """LastMessageSerializerが正しくデータをシリアライズするかをテスト"""
+        serializer = LastMessageSerializer(instance=self.message)
+        self.assertEqual(serializer.data['id'], self.message.id)
+        self.assertEqual(serializer.data['content'], self.message.content)
+        
+        # タイムスタンプの比較
+        serialized_timestamp = isoparse(serializer.data['timestamp'])
+        expected_timestamp = isoparse(self.message.timestamp.isoformat())
+        self.assertEqual(serialized_timestamp, expected_timestamp)
+
+    def test_conversation_serializer(self):
+        """ConversationSerializerが正しくデータをシリアライズするかをテスト"""
+        # デフォルト画像のチェックを追加
+        self.receiver.profile_image = None
+        self.receiver.save()
+
+        conversation_data = {
+            "other_user": self.receiver,
+            "last_message": self.message,
+        }
+        request = APIRequestFactory().get('/conversations/')
+        serializer = ConversationSerializer(instance=conversation_data, context={'request': request})
+        serialized_data = serializer.data
+
+        # `other_user` フィールドの検証
+        self.assertEqual(serialized_data['other_user']['id'], self.receiver.id)
+        self.assertEqual(serialized_data['other_user']['email'], self.receiver.email)
+        self.assertEqual(serialized_data['other_user']['name'], self.receiver.name)
+        self.assertTrue(serialized_data['other_user']['profile_image'].endswith('profile_images/default_profile.png'))  # デフォルト画像の確認
+
+        # `last_message` フィールドの検証
+        self.assertEqual(serialized_data['last_message']['id'], self.message.id)
+        self.assertEqual(serialized_data['last_message']['content'], self.message.content)
+        serialized_timestamp = isoparse(serialized_data['last_message']['timestamp'])
+        expected_timestamp = isoparse(self.message.timestamp.isoformat())
+        self.assertEqual(serialized_timestamp, expected_timestamp)
