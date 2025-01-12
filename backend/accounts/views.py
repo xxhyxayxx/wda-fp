@@ -1,6 +1,6 @@
 from rest_framework import generics, permissions
-from .models import CustomUser, Notification
-from .serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer, NotificationSerializer
+from .models import CustomUser, Notification, Message
+from .serializers import UserRegistrationSerializer, UserProfileSerializer, ChangePasswordSerializer, NotificationSerializer, MessageSerializer, ConversationSerializer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
@@ -8,8 +8,10 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.generics import ListAPIView
 from .tasks import generate_notification
-from django.db.models import Q
 from rest_framework.generics import RetrieveAPIView
+from django.db.models import Q, Max, F, Value
+from django.db.models.functions import Greatest
+from collections import defaultdict
 
 class UserRegistrationAPIView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
@@ -151,3 +153,85 @@ class UserDetailAPIView(RetrieveAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [IsAuthenticated]  # 認証が必要
     lookup_field = 'id'  # URLでユーザーIDを指定
+
+class MessageListAPIView(ListAPIView):
+    """ログインユーザーと特定の相手とのメッセージ履歴を取得"""
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        receiver_id = self.request.query_params.get('receiver')
+        if not receiver_id:
+            return Message.objects.none()  # receiverが指定されていない場合は空リストを返す
+        
+        return Message.objects.filter(
+            (Q(sender=self.request.user) & Q(receiver_id=receiver_id)) |
+            (Q(sender_id=receiver_id) & Q(receiver=self.request.user))
+        ).order_by('timestamp')
+
+class SendMessageAPIView(generics.CreateAPIView):
+    """新しいメッセージを送信する"""
+    serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        # sender をリクエストユーザーとして明示的に設定
+        serializer.save(sender=self.request.user)
+
+class MarkMessageAsReadAPIView(APIView):
+    """特定のメッセージを既読にする"""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, message_id):
+        try:
+            message = Message.objects.get(id=message_id, receiver=request.user)
+            message.is_read = True
+            message.save(update_fields=['is_read'])
+            return Response({"detail": "Message marked as read."}, status=200)
+        except Message.DoesNotExist:
+            return Response({"error": "Message not found."}, status=404)
+
+class ConversationListAPIView(APIView):
+    """
+    ログインユーザーが関与するすべての会話を取得し、最新のメッセージを返す
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        user = request.user
+
+        # ログインユーザーが関与するすべてのメッセージを取得
+        messages = Message.objects.filter(Q(sender=user) | Q(receiver=user)).order_by('timestamp')
+
+        # 相手ごとに最新のメッセージを取得
+        conversation_dict = defaultdict(lambda: {"message": None, "timestamp": None})
+
+        for message in messages:
+            # 相手のIDを取得
+            other_user_id = message.receiver.id if message.sender == user else message.sender.id
+            if (
+                conversation_dict[other_user_id]["timestamp"] is None
+                or conversation_dict[other_user_id]["timestamp"] < message.timestamp
+            ):
+                conversation_dict[other_user_id] = {
+                    "message": message,
+                    "timestamp": message.timestamp
+                }
+
+        # 会話リストを作成
+        conversations = []
+        for other_user_id, data in conversation_dict.items():
+            other_user = CustomUser.objects.get(id=other_user_id)
+            last_message = data["message"]
+
+            # シリアライザーを使用してデータを整形
+            serializer = ConversationSerializer(
+                {
+                    "other_user": other_user,
+                    "last_message": last_message
+                },
+                context={"request": request}  # contextにrequestを渡す
+            )
+            conversations.append(serializer.data)
+
+        return Response(conversations)

@@ -38,6 +38,12 @@ const NavBar = () => {
                         </Link>
                     </li>
                 )}
+                {/* メッセージリンク */}
+                <li>
+                    <Link to="/messages" className={styles.navLink}>
+                        Messages
+                    </Link>
+                </li>
                 {/* 通知リンク */}
                 <li className={styles.notificationLink}>
                     <Link to="/notifications" className={styles.navLink}>

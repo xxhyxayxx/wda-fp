@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import CustomUser, Notification
+from .models import CustomUser, Notification, Message
+from django.conf import settings
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
@@ -18,17 +19,22 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return user
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    profile_image = serializers.ImageField(allow_null=True, required=False)
+    profile_image = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomUser
-        fields = ('id', 'email', 'name', 'user_type', 'profile_image')  # 'id' を追加
-        read_only_fields = ('user_type',)  # user_typeを読み取り専用に設定
+        fields = ('id', 'email', 'name', 'user_type', 'profile_image')
+        read_only_fields = ('user_type',)
 
-    def validate(self, data):
-        if 'profile_image' in data and not data['profile_image']:
-            data['profile_image'] = 'profile_images/default_profile.png'
-        return data
+    def get_profile_image(self, obj):
+        request = self.context.get('request')
+        if obj.profile_image:  # プロフィール画像が設定されている場合
+            return request.build_absolute_uri(obj.profile_image.url) if request else obj.profile_image.url
+        elif request:  # プロフィール画像がない場合、デフォルト画像を返す
+            default_image_path = settings.MEDIA_URL + 'profile_images/default_profile.png'
+            return request.build_absolute_uri(default_image_path)
+        else:  # request が None の場合、相対URLを返す
+            return settings.MEDIA_URL + 'profile_images/default_profile.png'
 
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True, required=True)
@@ -56,3 +62,31 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = ('id', 'user', 'title', 'message', 'link', 'event_type', 'created_at', 'is_read')
         read_only_fields = ('id', 'user', 'created_at')  # is_read を書き込み可能にしない場合はここに追加
+
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ('id', 'sender', 'receiver', 'content', 'timestamp', 'is_read')
+        read_only_fields = ('id', 'timestamp', 'sender')  # senderは自動的に設定
+
+    def validate(self, data):
+        # リクエストユーザーをsenderとして設定
+        sender = self.context['request'].user
+        receiver = data.get('receiver')
+
+        # senderとreceiverが異なる必要がある
+        if sender == receiver:
+            raise serializers.ValidationError({"receiver": "Sender and receiver must be different."})
+
+        # senderをデータに追加
+        data['sender'] = sender
+        return data
+
+class LastMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Message
+        fields = ["id", "content", "timestamp"]  # 必要なフィールドを指定
+
+class ConversationSerializer(serializers.Serializer):
+    other_user = UserProfileSerializer()
+    last_message = LastMessageSerializer()

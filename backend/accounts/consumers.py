@@ -2,6 +2,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 import json
 from asgiref.sync import sync_to_async
 from django.contrib.auth.models import AnonymousUser
+from .models import Message, CustomUser
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -68,3 +69,64 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         """
         notification_data = event["notification"]
         await self.send(text_data=json.dumps(notification_data))
+
+class MessageConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        self.user = self.scope.get("user")
+        self.chat_id = self.scope['url_route']['kwargs']['chat_id']
+
+        if self.user.is_authenticated:
+            self.chat_group_name = f"chat_{self.chat_id}"
+
+            # チャットグループにユーザーを追加
+            await self.channel_layer.group_add(
+                self.chat_group_name,
+                self.channel_name
+            )
+            await self.accept()
+        else:
+            await self.close()
+
+    async def disconnect(self, close_code):
+        if self.user.is_authenticated:
+            await self.channel_layer.group_discard(
+                self.chat_group_name,
+                self.channel_name
+            )
+
+    async def receive(self, text_data):
+        data = json.loads(text_data)
+        message_content = data.get("content")
+        receiver_id = data.get("receiver_id")
+
+        if not message_content or not receiver_id:
+            await self.send(text_data=json.dumps({"error": "Content and receiver_id are required"}))
+            return
+
+        # メッセージを保存
+        receiver = await sync_to_async(CustomUser.objects.get)(id=receiver_id)
+        message = await sync_to_async(Message.objects.create)(
+            sender=self.user,
+            receiver=receiver,
+            content=message_content
+        )
+
+        # グループ内でメッセージを送信
+        await self.channel_layer.group_send(
+            self.chat_group_name,
+            {
+                "type": "chat_message",
+                "message": {
+                    "id": message.id,
+                    "sender": self.user.id,
+                    "receiver": receiver.id,
+                    "content": message.content,
+                    "timestamp": str(message.timestamp),
+                    "is_read": message.is_read,
+                }
+            }
+        )
+
+    async def chat_message(self, event):
+        # クライアントにメッセージを送信
+        await self.send(text_data=json.dumps(event["message"]))

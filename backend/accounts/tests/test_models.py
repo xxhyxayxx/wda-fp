@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from accounts.models import Notification
+from accounts.models import Message
 
 CustomUser = get_user_model()
 
@@ -186,3 +187,96 @@ class NotificationModelTest(TestCase):
 
         self.assertEqual(Notification.objects.filter(user=self.user, is_read=False).count(), 0)
         self.assertEqual(Notification.objects.filter(user=self.user, is_read=True).count(), 2)
+
+class MessageModelTest(TestCase):
+
+    def setUp(self):
+        self.sender = CustomUser.objects.create_user(
+            email='sender@example.com',
+            password='password123',
+            user_type='student'
+        )
+        self.receiver = CustomUser.objects.create_user(
+            email='receiver@example.com',
+            password='password123',
+            user_type='teacher'
+        )
+
+    def test_create_message(self):
+        """メッセージが正常に作成されることをテスト"""
+        message = Message.objects.create(
+            sender=self.sender,
+            receiver=self.receiver,
+            content="Hello, this is a test message!"
+        )
+        self.assertEqual(message.sender, self.sender)
+        self.assertEqual(message.receiver, self.receiver)
+        self.assertEqual(message.content, "Hello, this is a test message!")
+        self.assertFalse(message.is_read)  # is_read のデフォルト値を確認
+        self.assertIsNotNone(message.timestamp)
+
+    def test_mark_message_as_read(self):
+        """メッセージを既読にすることをテスト"""
+        message = Message.objects.create(
+            sender=self.sender,
+            receiver=self.receiver,
+            content="This is a test message!"
+        )
+        self.assertFalse(message.is_read)  # 初期値は False のはず
+
+        # 既読にする
+        message.is_read = True
+        message.save()
+
+        updated_message = Message.objects.get(id=message.id)
+        self.assertTrue(updated_message.is_read)
+
+    def test_delete_user_deletes_messages(self):
+        """ユーザーを削除したときに、そのユーザーが関係するメッセージが削除されることをテスト"""
+        Message.objects.create(
+            sender=self.sender,
+            receiver=self.receiver,
+            content="Message from sender to receiver"
+        )
+        Message.objects.create(
+            sender=self.receiver,
+            receiver=self.sender,
+            content="Message from receiver to sender"
+        )
+
+        self.assertEqual(Message.objects.filter(sender=self.sender).count(), 1)
+        self.assertEqual(Message.objects.filter(receiver=self.receiver).count(), 1)
+
+        # sender を削除
+        self.sender.delete()
+
+        self.assertEqual(Message.objects.filter(sender=self.sender).count(), 0)
+        self.assertEqual(Message.objects.filter(receiver=self.sender).count(), 0)
+
+    def test_message_str_method(self):
+        """Message の __str__ メソッドが正しい形式を返すことをテスト"""
+        message = Message.objects.create(
+            sender=self.sender,
+            receiver=self.receiver,
+            content="Test message content"
+        )
+        expected_str = f"Message from {self.sender} to {self.receiver} at {message.timestamp}"
+        self.assertEqual(str(message), expected_str)
+
+    def test_send_multiple_messages(self):
+        """同一の送信者と受信者間で複数のメッセージを送信できることをテスト"""
+        Message.objects.create(sender=self.sender, receiver=self.receiver, content="First message")
+        Message.objects.create(sender=self.sender, receiver=self.receiver, content="Second message")
+        Message.objects.create(sender=self.receiver, receiver=self.sender, content="Reply message")
+
+        self.assertEqual(Message.objects.filter(sender=self.sender, receiver=self.receiver).count(), 2)
+        self.assertEqual(Message.objects.filter(sender=self.receiver, receiver=self.sender).count(), 1)
+
+    def test_message_ordering(self):
+        """メッセージがタイムスタンプの順で正しく並べられることをテスト"""
+        message1 = Message.objects.create(sender=self.sender, receiver=self.receiver, content="First message")
+        message2 = Message.objects.create(sender=self.sender, receiver=self.receiver, content="Second message")
+        messages = Message.objects.filter(sender=self.sender, receiver=self.receiver).order_by('timestamp')
+
+        self.assertEqual(messages[0], message1)
+        self.assertEqual(messages[1], message2)

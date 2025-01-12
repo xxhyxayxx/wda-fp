@@ -12,6 +12,7 @@ services:
       - .env
     depends_on:
       - redis
+    user: "1000:1000"
 
   redis:
     image: redis:6.2
@@ -28,6 +29,7 @@ services:
       - redis
     env_file:
       - .env
+    user: "1000:1000"
   
   frontend:
     build:

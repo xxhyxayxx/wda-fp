@@ -2,9 +2,9 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
-from accounts.models import CustomUser, Notification
+from accounts.models import CustomUser, Notification, Message
 from django.core.files.uploadedfile import SimpleUploadedFile
-from datetime import datetime
+from datetime import datetime, timezone
 import os
 from unittest.mock import patch
 from django.db.models import Q  # 修正: Q をインポート
@@ -238,4 +238,167 @@ class UserDetailAPITestCase(APITestCase):
         # 未認証のリクエストをテスト
         self.client.logout()
         response = self.client.get(f'/accounts/users/{self.user.id}/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+class MessageAPIViewTestCase(TestCase):
+    def setUp(self):
+        # テスト用ユーザー作成
+        self.sender = CustomUser.objects.create_user(
+            email='sender@example.com',
+            password='password123',
+            user_type='student'
+        )
+        self.receiver = CustomUser.objects.create_user(
+            email='receiver@example.com',
+            password='password456',
+            user_type='student'
+        )
+        # テスト用メッセージ作成
+        self.message1 = Message.objects.create(
+            sender=self.sender,
+            receiver=self.receiver,
+            content="Test message 1"
+        )
+        self.message2 = Message.objects.create(
+            sender=self.receiver,
+            receiver=self.sender,
+            content="Test message 2",
+            is_read=True
+        )
+        self.client = APIClient()
+        self.url_list = reverse('message-list')  # メッセージ履歴取得URL
+        self.url_send = reverse('message-send')  # メッセージ送信URL
+        self.mark_as_read_url = lambda message_id: reverse('message-mark-as-read', args=[message_id])
+
+    def test_get_message_list(self):
+        """メッセージ履歴取得が正常に動作するかをテスト"""
+        self.client.force_authenticate(user=self.sender)
+        response = self.client.get(self.url_list, {'receiver': self.receiver.id})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 2)  # 送信・受信の両方のメッセージが取得される
+        self.assertEqual(response.data[0]['content'], "Test message 1")
+        self.assertEqual(response.data[1]['content'], "Test message 2")
+
+    def test_get_message_list_unauthenticated(self):
+        """未認証状態でのメッセージ履歴取得が拒否されることをテスト"""
+        response = self.client.get(self.url_list, {'receiver': self.receiver.id})
+        print("Unauthenticated Response Status Code:", response.status_code)  # デバッグ用
+        print("Unauthenticated Response Data:", response.data)  # デバッグ用
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_send_message(self):
+        """新しいメッセージを送信するテスト"""
+        self.client.force_authenticate(user=self.sender)  # 認証済みの sender
+        data = {
+            'receiver': self.receiver.id,
+            'content': "New test message"
+        }
+        response = self.client.post(self.url_send, data)
+        print("Response status code:", response.status_code)  # デバッグ用
+        print("Response data:", response.data)  # デバッグ用
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['content'], "New test message")
+        self.assertEqual(response.data['sender'], self.sender.id)
+        self.assertEqual(response.data['receiver'], self.receiver.id)
+        self.assertFalse(response.data['is_read'])  # 新しいメッセージは未読であることを確認
+
+    def test_send_message_unauthenticated(self):
+        """未認証状態でのメッセージ送信が拒否されることをテスト"""
+        data = {
+            'receiver': self.receiver.id,
+            'content': "Unauthenticated test message"
+        }
+        response = self.client.post(self.url_send, data)
+        print("Unauthenticated Response Status Code:", response.status_code)  # デバッグ用
+        print("Unauthenticated Response Data:", response.data)  # デバッグ用
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_mark_message_as_read(self):
+        """特定のメッセージを既読にするテスト"""
+        self.client.force_authenticate(user=self.receiver)  # メッセージの受信者で認証
+        response = self.client.post(self.mark_as_read_url(self.message1.id))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.message1.refresh_from_db()
+        self.assertTrue(self.message1.is_read)  # メッセージが既読になったことを確認
+
+    def test_mark_message_as_read_unauthenticated(self):
+        """未認証状態での既読操作が拒否されることをテスト"""
+        response = self.client.post(self.mark_as_read_url(self.message1.id))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_mark_message_as_read_invalid_message(self):
+        """他のユーザーのメッセージを既読にしようとするとエラーになることをテスト"""
+        self.client.force_authenticate(user=self.sender)  # 送信者で認証
+        response = self.client.post(self.mark_as_read_url(self.message1.id))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)  # 他人のメッセージは見つからない扱い
+
+class ConversationListAPIViewTestCase(TestCase):
+    def setUp(self):
+        # テスト用ユーザー作成
+        self.user1 = CustomUser.objects.create_user(
+            email="user1@example.com",
+            password="password1",
+            name="User 1"
+        )
+        self.user2 = CustomUser.objects.create_user(
+            email="user2@example.com",
+            password="password2",
+            name="User 2"
+        )
+        self.user3 = CustomUser.objects.create_user(
+            email="user3@example.com",
+            password="password3",
+            name="User 3"
+        )
+
+        # テスト用メッセージ作成
+        self.message1 = Message.objects.create(
+            sender=self.user1,
+            receiver=self.user2,
+            content="Message from User 1 to User 2",
+        )
+        self.message2 = Message.objects.create(
+            sender=self.user2,
+            receiver=self.user1,
+            content="Reply from User 2 to User 1",
+        )
+        self.message3 = Message.objects.create(
+            sender=self.user1,
+            receiver=self.user3,
+            content="Message from User 1 to User 3",
+        )
+
+        self.client = APIClient()
+        self.url = reverse("conversation-list")
+
+    def test_get_conversations_authenticated(self):
+        """認証済みユーザーが会話リストを取得できることをテスト"""
+        self.client.force_authenticate(user=self.user1)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # 会話が2つ存在することを確認
+        self.assertEqual(len(response.data), 2)
+
+        # User 2との会話
+        conversation_with_user2 = next(
+            conv for conv in response.data if conv["other_user"]["id"] == self.user2.id
+        )
+        self.assertEqual(conversation_with_user2["last_message"]["content"], "Reply from User 2 to User 1")
+        self.assertEqual(conversation_with_user2["last_message"]["id"], self.message2.id)  # メッセージIDで確認
+        self.assertEqual(conversation_with_user2["other_user"]["name"], "User 2")
+        self.assertEqual(conversation_with_user2["other_user"]["profile_image"], "/media/profile_images/default_profile.png")
+
+        # User 3との会話
+        conversation_with_user3 = next(
+            conv for conv in response.data if conv["other_user"]["id"] == self.user3.id
+        )
+        self.assertEqual(conversation_with_user3["last_message"]["content"], "Message from User 1 to User 3")
+        self.assertEqual(conversation_with_user3["last_message"]["id"], self.message3.id)  # メッセージIDで確認
+        self.assertEqual(conversation_with_user3["other_user"]["name"], "User 3")
+        self.assertEqual(conversation_with_user3["other_user"]["profile_image"], "/media/profile_images/default_profile.png")
+
+    def test_get_conversations_unauthenticated(self):
+        """未認証ユーザーが会話リストを取得できないことをテスト"""
+        response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
