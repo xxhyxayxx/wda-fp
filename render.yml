@@ -8,7 +8,7 @@ services:
     healthCheckPath: /
     buildCommand: "./build.sh"  # build.shを実行
     startCommand: "gunicorn backend.wsgi --log-file -"  # プロジェクト名が'backend'の場合
-    rootDir: ./backend  # backendディレクトリをルートとして設定
+    rootDir: backend  # backendディレクトリをルートとして設定
     envVars:
       - key: SECRET_KEY
         generateValue: true
