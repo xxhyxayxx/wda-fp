@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: my-backend
+    env: python
+    region: singapore
+    plan: free
+    branch: main
+    healthCheckPath: /
+    buildCommand: "./build.sh"  # build.shを実行
+    startCommand: "gunicorn backend.wsgi --log-file -"  # プロジェクト名が'backend'の場合
+    rootDir: ./backend  # backendディレクトリをルートとして設定
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SUPERUSER_NAME
+        value: "admin"
+      - key: SUPERUSER_EMAIL
+        value: "admin@example.com"
+      - key: SUPERUSER_PASSWORD
+        value: "password"
