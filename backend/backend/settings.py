@@ -189,3 +189,7 @@ if os.environ.get('TESTING', 'False') == 'True':
             "BACKEND": "channels.layers.InMemoryChannelLayer",
         },
     }
+
+SUPERUSER_NAME = os.getenv('SUPERUSER_NAME')
+SUPERUSER_EMAIL = os.getenv('SUPERUSER_EMAIL')
+SUPERUSER_PASSWORD = os.getenv('SUPERUSER_PASSWORD')
