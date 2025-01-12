@@ -6,9 +6,9 @@ services:
     plan: free
     branch: main
     healthCheckPath: /
-    buildCommand: "./build.sh"  # build.shを実行
-    startCommand: "gunicorn backend.wsgi --log-file -"  # プロジェクト名が'backend'の場合
-    rootDir: backend  # backendディレクトリをルートとして設定
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn backend.wsgi:application --bind 0.0.0.0:10000 --log-file -"
+    rootDir: backend
     envVars:
       - key: SECRET_KEY
         generateValue: true
