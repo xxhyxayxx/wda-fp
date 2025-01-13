@@ -117,7 +117,11 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Media files
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+
+if os.getenv('RENDER_ENV') == 'production':
+    MEDIA_ROOT = '/media'  # Renderのボリューム用
+else:
+    MEDIA_ROOT = BASE_DIR / 'media'  # ローカル環境用
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
