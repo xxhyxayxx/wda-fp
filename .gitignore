@@ -63,7 +63,9 @@ coverage/
 
 # Media files
 media/
-profile_images/
+!media/profile_images/
+!media/profile_images/default_profile.png
 course_files/
+
 
 
