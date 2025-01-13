@@ -62,10 +62,6 @@ coverage/
 *.expo
 
 # Media files
-media/
-!media/profile_images/
-!media/profile_images/default_profile.png
-course_files/
-
-
-
+backend/media/
+!backend/media/profile_images/default_profile.png
+backend/media/course_files/
