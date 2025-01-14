@@ -18,6 +18,3 @@ services:
         value: "admin@example.com"
       - key: SUPERUSER_PASSWORD
         value: "password"
-    mounts:
-          - path: /media
-            volume: media-volume
