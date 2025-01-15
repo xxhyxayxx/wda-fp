@@ -309,6 +309,8 @@ class ConversationListAPIViewTestCase(TestCase):
 
         # 会話が2つ存在することを確認
         self.assertEqual(len(response.data), 2)
+        
+        DEFAULT_PROFILE_IMAGE_URL = "https://res.cloudinary.com/<cloud_name>/image/upload/v1/profile_images/default_profile.png"
 
         # User 2との会話
         conversation_with_user2 = next(
@@ -317,7 +319,7 @@ class ConversationListAPIViewTestCase(TestCase):
         self.assertEqual(conversation_with_user2["last_message"]["content"], "Reply from User 2 to User 1")
         self.assertEqual(conversation_with_user2["last_message"]["id"], self.message2.id)  # メッセージIDで確認
         self.assertEqual(conversation_with_user2["other_user"]["name"], "User 2")
-        self.assertEqual(conversation_with_user2["other_user"]["profile_image"], "/media/profile_images/default_profile.png")
+        self.assertEqual(conversation_with_user2["other_user"]["profile_image"], DEFAULT_PROFILE_IMAGE_URL)
 
         # User 3との会話
         conversation_with_user3 = next(
@@ -326,7 +328,7 @@ class ConversationListAPIViewTestCase(TestCase):
         self.assertEqual(conversation_with_user3["last_message"]["content"], "Message from User 1 to User 3")
         self.assertEqual(conversation_with_user3["last_message"]["id"], self.message3.id)  # メッセージIDで確認
         self.assertEqual(conversation_with_user3["other_user"]["name"], "User 3")
-        self.assertEqual(conversation_with_user3["other_user"]["profile_image"], "/media/profile_images/default_profile.png")
+        self.assertEqual(conversation_with_user3["other_user"]["profile_image"], DEFAULT_PROFILE_IMAGE_URL)
 
     def test_get_conversations_unauthenticated(self):
         """未認証ユーザーが会話リストを取得できないことをテスト"""
