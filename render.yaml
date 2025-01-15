@@ -26,3 +26,5 @@ services:
         value: "localhost,127.0.0.1,backend,backend:8000"
       - key: CLOUDINARY_URL
         value: "${CLOUDINARY_URL}"
+      - key: RENDER_ENV
+        value: "production"
