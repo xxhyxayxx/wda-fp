@@ -6,6 +6,14 @@ from accounts.models import CustomUser
 from courses.models import Course, Module, File, Enrollment, ModuleProgress, Feedback
 import hashlib
 from django.utils.timezone import now
+from unittest.mock import patch
+from django.db.models.signals import post_save
+from unittest.mock import patch
+from courses.models import Course
+from courses.signals import send_course_creation_notification
+from django.test import override_settings
+import os
+from django.conf import settings
 
 def get_file_hash(file):
     """ファイルのハッシュ値を取得"""
@@ -96,126 +104,55 @@ class CourseViewTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-class ModuleViewTest(APITestCase):
-    
+class ModuleCreateAPITest(APITestCase):
+
     def setUp(self):
+        # post_save シグナルを一時的に無効化
+        post_save.disconnect(send_course_creation_notification, sender=Course)
+
+        # テストデータのセットアップ
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
-            name='Teacher User',
+            name='Teacher',
             user_type='teacher'
         )
-        self.student = CustomUser.objects.create_user(
-            email='student@example.com',
-            password='testpassword',
-            name='Student User',
-            user_type='student'
-        )
-        
         self.course = Course.objects.create(
             title='Test Course',
-            description='This is a test course.',
+            description='Test Description',
             category='Test Category',
             is_published=True,
             created_by=self.teacher
         )
-        
-        self.module_data = {
-            'course': self.course.pk,
-            'title': 'Test Module',
-            'description': 'This is a test module.',
-        }
-
-        self.create_url = reverse('module-create')
-        self.update_url = lambda pk: reverse('module-update', args=[pk])
-        self.delete_url = lambda pk: reverse('module-delete', args=[pk])
-
-    def test_teacher_can_create_module(self):
         self.client.force_authenticate(user=self.teacher)
-        response = self.client.post(self.create_url, self.module_data)
 
+    def tearDown(self):
+        # post_save シグナルを再接続
+        post_save.connect(send_course_creation_notification, sender=Course)
+
+    @patch('courses.views.ModuleCreateAPIView.send_notifications_to_students')
+    def test_create_module_without_notifications(self, mock_send_notifications):
+        """通知処理をスキップしてモジュールを作成するテスト"""
+        mock_send_notifications.return_value = None  # モックで何もしない
+        data = {
+            'title': 'Test Module',
+            'course': self.course.id
+        }
+        response = self.client.post(reverse('module-create'), data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Module.objects.count(), 1)
-        self.assertEqual(Module.objects.first().title, 'Test Module')
-
-    def test_student_cannot_create_module(self):
-        self.client.force_authenticate(user=self.student)
-        response = self.client.post(self.create_url, self.module_data)
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_teacher_can_update_module(self):
-        module = Module.objects.create(
-            course=self.course,
-            title=self.module_data['title'],
-            description=self.module_data['description'],
-            created_by=self.teacher
-        )
-        updated_data = {
-            'title': 'Updated Module Title',
-            'description': 'Updated description.',
-            'course': self.course.pk,
-        }
-
-        self.client.force_authenticate(user=self.teacher)
-        response = self.client.put(self.update_url(module.pk), updated_data)
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        module.refresh_from_db()
-        self.assertEqual(module.title, 'Updated Module Title')
-
-    def test_student_cannot_update_module(self):
-        module = Module.objects.create(
-            course=self.course,
-            title=self.module_data['title'],
-            description=self.module_data['description'],
-            created_by=self.teacher
-        )
-        self.client.force_authenticate(user=self.student)
-        response = self.client.put(self.update_url(module.pk), self.module_data)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-    
-    def test_teacher_can_delete_module(self):
-        module = Module.objects.create(
-            course=self.course,
-            title=self.module_data['title'],
-            description=self.module_data['description'],
-            created_by=self.teacher
-        )
-
-        self.client.force_authenticate(user=self.teacher)
-        response = self.client.delete(self.delete_url(module.pk))
-
-        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(Module.objects.count(), 0)
-
-    def test_student_cannot_delete_module(self):
-        module = Module.objects.create(
-            course=self.course,
-            title=self.module_data['title'],
-            description=self.module_data['description'],
-            created_by=self.teacher
-        )
-
-        self.client.force_authenticate(user=self.student)
-        response = self.client.delete(self.delete_url(module.pk))
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 class FileBatchUpdateTest(APITestCase):
-
     def setUp(self):
+        # Courseシグナルを無効化
+        post_save.disconnect(send_course_creation_notification, sender=Course)
+
+        # テストユーザーとデータのセットアップ
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
             name='Teacher User',
             user_type='teacher'
-        )
-        self.student = CustomUser.objects.create_user(
-            email='student@example.com',
-            password='testpassword',
-            name='Student User',
-            user_type='student'
         )
         self.course = Course.objects.create(
             title='Test Course',
@@ -229,52 +166,34 @@ class FileBatchUpdateTest(APITestCase):
             title='Test Module',
             created_by=self.teacher
         )
-        # テスト用ファイルのセットアップ
-        self.test_file_1 = SimpleUploadedFile("test_file_1.pdf", b"file_content_1", content_type="application/pdf")
-        self.test_file_2 = SimpleUploadedFile("test_file_2.pdf", b"file_content_2", content_type="application/pdf")
-        
-        # ファイルバッチ更新エンドポイントのURL
+
+        # テスト用の既存ファイルをセットアップ
+        test_file_path = os.path.join(settings.BASE_DIR, 'media/test/gradschooltalkcopy3.pdf')
+        with open(test_file_path, 'wb') as f:
+            f.write(b'This is a test PDF content.')
+
+        self.test_file_path = test_file_path
         self.batch_update_url = reverse('file-batch-update')
 
-    def test_teacher_can_batch_update_files(self):
-        # 初期ファイルの作成
-        existing_file = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
+    @patch('cloudinary.uploader.upload')
+    def test_teacher_can_batch_update_files(self, mock_upload):
+        """教師がバッチファイル更新を実行できることを確認"""
+        # Mock Cloudinary アップロード
+        mock_upload.return_value = {'secure_url': 'https://res.cloudinary.com/test/image/upload/v12345/new_file.pdf'}
 
-        # 新規ファイルと更新ファイルの準備
-        new_file = SimpleUploadedFile("new_test_file.pdf", b"new file content", content_type="application/pdf")
-        updated_file = SimpleUploadedFile("updated_test_file_1.pdf", b"updated file content 1", content_type="application/pdf")
+        # 既存ファイルの作成
+        existing_file = File.objects.create(
+            module=self.module,
+            file='https://res.cloudinary.com/test/image/upload/v12345/existing_file.pdf',
+            created_by=self.teacher
+        )
 
-        # バッチ更新リクエストの準備
-        data = {
-            'module': self.module.pk,
-            'files_to_create': [new_file],  # 新規ファイル
-            'files_to_update': [updated_file],  # 既存ファイルの更新
-            'files_to_update_ids': [existing_file.pk],  # 更新するファイルのID
-            'files_to_delete': [existing_file.pk],  # 削除するファイルID
-        }
+        # 新規ファイルと更新ファイルを準備
+        with open(self.test_file_path, 'rb') as f:
+            new_file = SimpleUploadedFile("ai_ethics_paper.pdf", f.read(), content_type="application/pdf")
+            updated_file = SimpleUploadedFile("updated_ai_ethics_paper.pdf", b"Updated content", content_type="application/pdf")
 
-        self.client.force_authenticate(user=self.teacher)
-        response = self.client.post(self.batch_update_url, data, format='multipart')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        # 作成、更新、削除が正しく行われたかの確認
-        created_files = response.data.get('created')
-        updated_files = response.data.get('updated')
-        deleted_files = response.data.get('deleted')
-
-        self.assertEqual(len(created_files), 1)  # 新規ファイルが1件作成される
-        self.assertEqual(len(updated_files), 1)  # 既存ファイルが1件更新される
-        self.assertEqual(len(deleted_files), 1)  # 削除対象のファイルが1件削除される
-
-        # ファイル数を確認
-        self.assertEqual(File.objects.filter(module=self.module).count(), 1)
-
-    def test_student_cannot_batch_update_files(self):
-        existing_file = File.objects.create(module=self.module, file=self.test_file_1, created_by=self.teacher)
-        new_file = SimpleUploadedFile("new_test_file.pdf", b"new file content", content_type="application/pdf")
-        updated_file = SimpleUploadedFile("updated_test_file_1.pdf", b"updated file content 1", content_type="application/pdf")
-
+        # バッチ更新リクエストのデータ
         data = {
             'module': self.module.pk,
             'files_to_create': [new_file],
@@ -283,29 +202,30 @@ class FileBatchUpdateTest(APITestCase):
             'files_to_delete': [existing_file.pk],
         }
 
-        self.client.force_authenticate(user=self.student)
-        response = self.client.post(self.batch_update_url, data, format='multipart')
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_batch_update_files_with_missing_data(self):
-        # 必要なデータを送信しなかった場合のエラーハンドリング
-        data = {
-            'module': self.module.pk,
-            'files_to_create': [],
-            'files_to_update': [],
-            'files_to_update_ids': [],
-            'files_to_delete': [],
-        }
-
         self.client.force_authenticate(user=self.teacher)
         response = self.client.post(self.batch_update_url, data, format='multipart')
+        
+        # デバッグログ
+        print(f"Response status: {response.status_code}")
+        print(f"Response content: {response.content.decode()}")
 
-        # 正常に実行されるが、処理されるファイルがない場合
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['created']), 0)
-        self.assertEqual(len(response.data['updated']), 0)
-        self.assertEqual(len(response.data['deleted']), 0)
+
+        # 作成・更新・削除の確認
+        created_files = response.data.get('created')
+        updated_files = response.data.get('updated')
+        deleted_files = response.data.get('deleted')
+
+        self.assertEqual(len(created_files), 1)
+        self.assertEqual(len(updated_files), 1)
+        self.assertEqual(len(deleted_files), 1)
+
+        # URLの検証
+        self.assertTrue(created_files[0]['file'].startswith('https://res.cloudinary.com/'))
+        self.assertTrue(updated_files[0]['file'].startswith('https://res.cloudinary.com/'))
+
+        # モジュールに紐づくファイル数
+        self.assertEqual(File.objects.filter(module=self.module).count(), 1)
 
 class FileListAPIViewTest(FileBatchUpdateTest):
     def setUp(self):

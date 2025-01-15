@@ -17,6 +17,7 @@ from django.core.exceptions import PermissionDenied
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from accounts.models import Notification
+from cloudinary.uploader import upload
 
 # コース作成、更新、削除、一覧ビュー
 
@@ -47,15 +48,14 @@ class ModuleCreateAPIView(generics.CreateAPIView):
     def perform_create(self, serializer):
         # モジュールを保存
         module = serializer.save(created_by=self.request.user)
-        print(f"Module created: {module.title}")  # デバッグログ
+        self.send_notifications_to_students(module)
 
+    def send_notifications_to_students(self, module):
         # モジュールが属するコースを取得
         course = module.course
-        print(f"Module belongs to course: {course.title}")  # デバッグログ
 
         # コースに登録している生徒を取得
         enrolled_students = Enrollment.objects.filter(course=course).values_list('student', flat=True)
-        print(f"Enrolled students: {list(enrolled_students)}")  # デバッグログ
 
         # 通知タイトルとメッセージ
         title = "New Module Added"
@@ -72,7 +72,6 @@ class ModuleCreateAPIView(generics.CreateAPIView):
                     message=message,
                     link=f"/student-courses/{course.id}"  # 学生向けのリンク
                 )
-                print(f"Notification created for student_id: {student_id}")  # デバッグログ
 
                 # WebSocket通知を送信
                 async_to_sync(channel_layer.group_send)(
@@ -82,9 +81,8 @@ class ModuleCreateAPIView(generics.CreateAPIView):
                         "notification": NotificationSerializer(notification).data,  # 通知データ
                     }
                 )
-                print(f"WebSocket notification sent to student_id: {student_id}")  # デバッグログ
             except Exception as e:
-                print(f"Error sending notification to student_id {student_id}: {e}")  # エラーログ
+                print(f"Error sending notification to student_id {student_id}: {e}")
 
 # モジュール編集ビュー
 class ModuleUpdateAPIView(generics.UpdateAPIView):
@@ -101,7 +99,7 @@ class ModuleDeleteAPIView(generics.DestroyAPIView):
 class ModuleListAPIView(generics.ListAPIView):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
-    
+
 def get_file_hash(file):
     """ファイルのハッシュ値を取得"""
     md5 = hashlib.md5()
@@ -130,13 +128,22 @@ class FileBatchUpdateAPIView(APIView):
 
         # 1. 新規ファイルの作成
         for file in files_to_create:
-            file_data = {'file': file, 'created_by': user, 'module': module_id}
-            serializer = FileSerializer(data=file_data, context={'request': request})
-            if serializer.is_valid():
-                created_file = serializer.save()
-                created_files.append(created_file)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            try:
+                # Cloudinary にファイルをアップロード
+                upload_result = upload(file, folder=f"module_{module_id}")
+                file_data = {
+                    'file': upload_result['secure_url'],  # Cloudinary の URL を保存
+                    'created_by': user,
+                    'module': module_id
+                }
+                serializer = FileSerializer(data=file_data, context={'request': request})
+                if serializer.is_valid():
+                    created_file = serializer.save()
+                    created_files.append(created_file)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            except Exception as e:
+                return Response({"error": f"Failed to upload file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # 2. 既存ファイルの更新（内容が異なる場合のみ）
         for file_id, update_file in zip(files_to_update_ids, files_to_update):
@@ -148,8 +155,9 @@ class FileBatchUpdateAPIView(APIView):
                 new_file_hash = get_file_hash(update_file)
 
                 if existing_file_hash != new_file_hash:
-                    # 内容が異なる場合のみファイルを更新
-                    existing_file.file = update_file
+                    # 内容が異なる場合にアップロードを実行
+                    upload_result = upload(update_file, folder=f"module_{module_id}")
+                    existing_file.file = upload_result['secure_url']
                     existing_file.save()
                     updated_files.append(existing_file)
                     print(f"Updated existing file: {update_file.name}")
