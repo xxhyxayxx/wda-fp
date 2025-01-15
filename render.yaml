@@ -1,10 +1,10 @@
 services:
   - type: web
-    name: my-backend
+    name: my-backend-staging
     env: python
     region: singapore
     plan: free
-    branch: main
+    branch: staging
     healthCheckPath: /health/
     buildCommand: "./build.sh"
     startCommand: "gunicorn backend.wsgi:application --bind 0.0.0.0:10000 --log-file -"
@@ -18,3 +18,11 @@ services:
         value: "admin@example.com"
       - key: SUPERUSER_PASSWORD
         value: "password"
+      - key: DEBUG
+        value: "True"
+      - key: DATABASE_URL
+        value: "sqlite:///db.sqlite3"
+      - key: ALLOWED_HOSTS
+        value: "localhost,127.0.0.1,backend,backend:8000"
+      - key: CLOUDINARY_URL
+        value: "${CLOUDINARY_URL}"
