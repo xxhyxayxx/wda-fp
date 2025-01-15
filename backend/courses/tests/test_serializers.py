@@ -5,6 +5,8 @@ from courses.serializers import CourseSerializer, ModuleSerializer, FileSerializ
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIRequestFactory
 from rest_framework.exceptions import ValidationError
+from courses.signals import send_course_creation_notification
+from django.db.models.signals import post_save
 
 class CourseSerializerTest(TestCase):
 

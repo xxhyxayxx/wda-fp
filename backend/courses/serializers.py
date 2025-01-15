@@ -33,8 +33,8 @@ class ModuleSerializer(serializers.ModelSerializer):
 class FileSerializer(serializers.ModelSerializer):
     module_title = serializers.CharField(source='module.title', read_only=True)
     created_by_name = serializers.CharField(source='created_by.name', read_only=True)
-    file = serializers.FileField(use_url=True)
-
+    file = serializers.URLField()  # FileField から URLField に変更
+    
     class Meta:
         model = File
         fields = ['id', 'module', 'module_title', 'file', 'uploaded_at', 'created_by_name']

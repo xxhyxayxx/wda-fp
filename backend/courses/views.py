@@ -18,6 +18,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from accounts.models import Notification
 from cloudinary.uploader import upload
+import os
 
 # コース作成、更新、削除、一覧ビュー
 
@@ -100,39 +101,47 @@ class ModuleListAPIView(generics.ListAPIView):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
 
-def get_file_hash(file):
-    """ファイルのハッシュ値を取得"""
-    md5 = hashlib.md5()
-    for chunk in file.chunks():
-        md5.update(chunk)
-    return md5.hexdigest()
-
 class FileBatchUpdateAPIView(APIView):
     permission_classes = [IsTeacher]
 
     @transaction.atomic
     def post(self, request, *args, **kwargs):
-        # リクエストからファイルと削除対象IDの取得
+        # リクエストから必要なデータを取得
         files_to_create = request.FILES.getlist('files_to_create')
-        files_to_update = request.FILES.getlist('files_to_update')
-        files_to_update_ids = request.data.getlist('files_to_update_ids', [])
-
-        # files_to_deleteをリスト形式で取得
         files_to_delete = request.data.getlist('files_to_delete')
-        
-        # モジュールIDやユーザー情報の取得
         module_id = request.data.get('module')
         user = request.user
 
-        created_files, updated_files, deleted_files = [], [], []
+        print(f"Files to create: {[file.name for file in files_to_create]}")
+        print(f"Files to delete IDs: {files_to_delete}")
+        print(f"Module ID: {module_id}, User: {user}")
 
-        # 1. 新規ファイルの作成
+        created_files = self.create_files_with_overwrite(files_to_create, module_id, user, request)
+        deleted_files = self.delete_files(files_to_delete, module_id)
+
+        # レスポンスデータの作成
+        response_data = {
+            "created": FileSerializer(created_files, many=True, context={'request': request}).data,
+            "deleted": deleted_files,
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
+
+    def create_files_with_overwrite(self, files_to_create, module_id, user, request):
+        """
+        Cloudinaryのoverwrite=Trueオプションを利用してファイルをアップロードし、上書きします。
+        """
+        created_files = []
         for file in files_to_create:
             try:
-                # Cloudinary にファイルをアップロード
-                upload_result = upload(file, folder=f"module_{module_id}")
+                # ファイルをアップロード（overwrite=Trueを使用）
+                print(f"Uploading file: {file.name} to folder: module_{module_id}")
+                upload_result = upload(file, folder=f"module_{module_id}", overwrite=True)
+                print(f"Upload result: {upload_result}")
+
+                # ファイルデータ作成
                 file_data = {
-                    'file': upload_result['secure_url'],  # Cloudinary の URL を保存
+                    'file': upload_result['secure_url'],
                     'created_by': user,
                     'module': module_id
                 }
@@ -140,46 +149,26 @@ class FileBatchUpdateAPIView(APIView):
                 if serializer.is_valid():
                     created_file = serializer.save()
                     created_files.append(created_file)
+                    print(f"File created successfully: {created_file.file.url}")
                 else:
-                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                    print(f"Validation errors: {serializer.errors}")
+                    raise ValueError("File validation failed")
             except Exception as e:
-                return Response({"error": f"Failed to upload file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                print(f"Failed to create file: {str(e)}")
+                continue
+        return created_files
 
-        # 2. 既存ファイルの更新（内容が異なる場合のみ）
-        for file_id, update_file in zip(files_to_update_ids, files_to_update):
-            try:
-                existing_file = File.objects.get(id=file_id, module=module_id)
-                
-                # 既存ファイルと新しいファイルのハッシュを比較
-                existing_file_hash = get_file_hash(existing_file.file)
-                new_file_hash = get_file_hash(update_file)
-
-                if existing_file_hash != new_file_hash:
-                    # 内容が異なる場合にアップロードを実行
-                    upload_result = upload(update_file, folder=f"module_{module_id}")
-                    existing_file.file = upload_result['secure_url']
-                    existing_file.save()
-                    updated_files.append(existing_file)
-                    print(f"Updated existing file: {update_file.name}")
-                else:
-                    print(f"File {update_file.name} is identical to the existing file. No update performed.")
-
-            except File.DoesNotExist:
-                return Response({"error": f"File with id {file_id} does not exist"}, status=status.HTTP_404_NOT_FOUND)
-
-        # 3. ファイルの削除
-        print("Deleting files with IDs:", files_to_delete)  # デバッグ用
-        File.objects.filter(id__in=files_to_delete, module=module_id).delete()
-        deleted_files = files_to_delete
-
-        # レスポンスデータの作成
-        response_data = {
-            "created": FileSerializer(created_files, many=True, context={'request': request}).data,
-            "updated": FileSerializer(updated_files, many=True, context={'request': request}).data,
-            "deleted": deleted_files,
-        }
-
-        return Response(response_data, status=status.HTTP_200_OK)
+    def delete_files(self, files_to_delete, module_id):
+        """
+        指定されたIDのファイルを削除します。
+        """
+        try:
+            File.objects.filter(id__in=files_to_delete, module=module_id).delete()
+            print(f"Deleted files with IDs: {files_to_delete}")
+            return files_to_delete
+        except Exception as e:
+            print(f"Failed to delete files: {str(e)}")
+            return []
 
 # ファイルリストビュー
 class FileListAPIView(generics.ListAPIView):

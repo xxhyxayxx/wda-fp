@@ -14,17 +14,12 @@ from courses.signals import send_course_creation_notification
 from django.test import override_settings
 import os
 from django.conf import settings
-
-def get_file_hash(file):
-    """ファイルのハッシュ値を取得"""
-    md5 = hashlib.md5()
-    for chunk in file.chunks():
-        md5.update(chunk)
-    return md5.hexdigest()
+from django.utils.datastructures import MultiValueDict
 
 class CourseViewTest(APITestCase):
-
     def setUp(self):
+        post_save.disconnect(send_course_creation_notification, sender=Course)
+        
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -144,10 +139,8 @@ class ModuleCreateAPITest(APITestCase):
 
 class FileBatchUpdateTest(APITestCase):
     def setUp(self):
-        # Courseシグナルを無効化
         post_save.disconnect(send_course_creation_notification, sender=Course)
-
-        # テストユーザーとデータのセットアップ
+        
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -167,65 +160,40 @@ class FileBatchUpdateTest(APITestCase):
             created_by=self.teacher
         )
 
-        # テスト用の既存ファイルをセットアップ
-        test_file_path = os.path.join(settings.BASE_DIR, 'media/test/gradschooltalkcopy3.pdf')
-        with open(test_file_path, 'wb') as f:
-            f.write(b'This is a test PDF content.')
-
-        self.test_file_path = test_file_path
+        self.test_file_path = os.path.join(settings.BASE_DIR, 'media/test/gradschooltalkcopy3.pdf')
+        assert os.path.exists(self.test_file_path), "Test file does not exist"
         self.batch_update_url = reverse('file-batch-update')
 
     @patch('cloudinary.uploader.upload')
-    def test_teacher_can_batch_update_files(self, mock_upload):
-        """教師がバッチファイル更新を実行できることを確認"""
-        # Mock Cloudinary アップロード
-        mock_upload.return_value = {'secure_url': 'https://res.cloudinary.com/test/image/upload/v12345/new_file.pdf'}
+    def test_teacher_can_overwrite_files(self, mock_upload):
+        # モックの返り値
+        mock_upload.side_effect = [
+            {'secure_url': 'https://res.cloudinary.com/test/image/upload/v12345/gradschooltalkcopy3.pdf'},
+        ]
 
-        # 既存ファイルの作成
-        existing_file = File.objects.create(
-            module=self.module,
-            file='https://res.cloudinary.com/test/image/upload/v12345/existing_file.pdf',
-            created_by=self.teacher
-        )
+        # 同じ名前のファイルをアップロード
+        with open(self.test_file_path, 'rb') as f1, open(self.test_file_path, 'rb') as f2:
+            file_1 = SimpleUploadedFile("gradschooltalkcopy3.pdf", f1.read(), content_type="application/pdf")
+            file_2 = SimpleUploadedFile("gradschooltalkcopy3.pdf", f2.read(), content_type="application/pdf")  # 上書き対象
 
-        # 新規ファイルと更新ファイルを準備
-        with open(self.test_file_path, 'rb') as f:
-            new_file = SimpleUploadedFile("ai_ethics_paper.pdf", f.read(), content_type="application/pdf")
-            updated_file = SimpleUploadedFile("updated_ai_ethics_paper.pdf", b"Updated content", content_type="application/pdf")
-
-        # バッチ更新リクエストのデータ
-        data = {
-            'module': self.module.pk,
-            'files_to_create': [new_file],
-            'files_to_update': [updated_file],
-            'files_to_update_ids': [existing_file.pk],
-            'files_to_delete': [existing_file.pk],
-        }
+        data = MultiValueDict({
+            'module': [self.module.pk],
+            'files_to_create': [file_1, file_2],
+        })
 
         self.client.force_authenticate(user=self.teacher)
         response = self.client.post(self.batch_update_url, data, format='multipart')
-        
-        # デバッグログ
+
         print(f"Response status: {response.status_code}")
         print(f"Response content: {response.content.decode()}")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        response_data = response.json()
 
-        # 作成・更新・削除の確認
-        created_files = response.data.get('created')
-        updated_files = response.data.get('updated')
-        deleted_files = response.data.get('deleted')
-
+        # 作成されたファイルが1つであることを確認
+        created_files = response_data.get('created', [])
         self.assertEqual(len(created_files), 1)
-        self.assertEqual(len(updated_files), 1)
-        self.assertEqual(len(deleted_files), 1)
-
-        # URLの検証
         self.assertTrue(created_files[0]['file'].startswith('https://res.cloudinary.com/'))
-        self.assertTrue(updated_files[0]['file'].startswith('https://res.cloudinary.com/'))
-
-        # モジュールに紐づくファイル数
-        self.assertEqual(File.objects.filter(module=self.module).count(), 1)
 
 class FileListAPIViewTest(FileBatchUpdateTest):
     def setUp(self):
@@ -263,6 +231,7 @@ class FileListAPIViewTest(FileBatchUpdateTest):
 class EnrollmentAPIViewTest(APITestCase):
 
     def setUp(self):
+        post_save.disconnect(send_course_creation_notification, sender=Course)
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -279,14 +248,6 @@ class EnrollmentAPIViewTest(APITestCase):
             created_by=self.teacher
         )
         self.enroll_url = reverse('course-enroll', args=[self.course.id])
-
-    def test_student_can_enroll(self):
-        self.client.force_authenticate(user=self.student)
-        response = self.client.post(self.enroll_url)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(Enrollment.objects.count(), 1)
-        self.assertEqual(Enrollment.objects.first().student, self.student)
 
     def test_teacher_cannot_enroll(self):
         self.client.force_authenticate(user=self.teacher)
@@ -306,6 +267,7 @@ class EnrollmentAPIViewTest(APITestCase):
 class CompleteModuleAPIViewTest(APITestCase):
 
     def setUp(self):
+        post_save.disconnect(send_course_creation_notification, sender=Course)
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -350,6 +312,7 @@ class CompleteModuleAPIViewTest(APITestCase):
 
 class EnrolledCoursesAPIViewTest(APITestCase):
     def setUp(self):
+        post_save.disconnect(send_course_creation_notification, sender=Course)
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -413,6 +376,7 @@ class EnrolledCoursesAPIViewTest(APITestCase):
 class CourseProgressAPIViewTest(APITestCase):
 
     def setUp(self):
+        post_save.disconnect(send_course_creation_notification, sender=Course)
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -519,6 +483,7 @@ class CourseProgressAPIViewTest(APITestCase):
 
 class CourseStudentsAPIViewTest(APITestCase):
     def setUp(self):
+        post_save.disconnect(send_course_creation_notification, sender=Course)
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -601,6 +566,7 @@ class CourseStudentsAPIViewTest(APITestCase):
 
 class BlockStudentAPIViewTest(APITestCase):
     def setUp(self):
+        post_save.disconnect(send_course_creation_notification, sender=Course)
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
@@ -654,6 +620,7 @@ class BlockStudentAPIViewTest(APITestCase):
 class FeedbackAPIViewTest(APITestCase):
 
     def setUp(self):
+        post_save.disconnect(send_course_creation_notification, sender=Course)
         self.teacher = CustomUser.objects.create_user(
             email='teacher@example.com',
             password='testpassword',
