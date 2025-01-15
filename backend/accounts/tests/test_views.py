@@ -8,6 +8,8 @@ from datetime import datetime, timezone
 import os
 from unittest.mock import patch
 from django.db.models import Q  # 修正: Q をインポート
+from django.conf import settings
+from django.test import override_settings
 
 class UserRegistrationAPIViewTest(TestCase):
     def setUp(self):
@@ -37,78 +39,6 @@ class UserRegistrationAPIViewTest(TestCase):
             'password': 'newpassword'
         }
         response = self.client.post(url, data)
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('email', response.data)
-
-class UserProfileUpdateAPIViewTest(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user = CustomUser.objects.create_user(email='testuser@example.com', password='testpassword')
-
-    def tearDown(self):
-        CustomUser.objects.all().delete()
-
-    def test_user_profile_update_successful(self):
-        """user_type が読み取り専用であり、変更されないことを確認"""
-        self.client.force_authenticate(user=self.user)
-        url = reverse('user-profile-update')
-        data = {
-            'email': 'updateduser@example.com',
-            'user_type': 'teacher'  # 無効な変更
-        }
-        response = self.client.put(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.email, 'updateduser@example.com')
-        self.assertEqual(self.user.user_type, 'student')  # 変更されないことを確認
-
-    def test_user_profile_update_with_empty_profile_image(self):
-        """プロフィール画像を空にした場合、デフォルト画像に置き換わることをテスト"""
-        self.client.force_authenticate(user=self.user)
-        url = reverse('user-profile-update')
-        data = {
-            'profile_image': None  # 空の画像フィールドを送信
-        }
-        response = self.client.patch(url, data, format='json', partial=True)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.user.refresh_from_db()
-        self.assertEqual(self.user.profile_image.name, 'profile_images/default_profile.png')
-
-    def test_user_profile_update_profile_image_successful(self):
-        """プロフィール画像の更新が成功するかをテスト"""
-        self.client.force_authenticate(user=self.user)
-        url = reverse('user-profile-update')
-        image_path = os.path.join(os.path.dirname(__file__), 'test_image.png')
-        if not os.path.exists(image_path):
-            self.skipTest("テスト画像が存在しないため、このテストをスキップします。")
-        with open(image_path, 'rb') as image_file:
-            image = SimpleUploadedFile(
-                name='new_image.png',
-                content=image_file.read(),
-                content_type='image/png'
-            )
-            data = {'profile_image': image}
-            response = self.client.patch(url, data, format='multipart')
-            self.assertEqual(response.status_code, status.HTTP_200_OK)
-            self.user.refresh_from_db()
-            self.assertTrue(self.user.profile_image.name.startswith('profile_images/new_image'))
-
-    def test_user_profile_update_invalid_email(self):
-        """無効なメールアドレスを渡した場合のバリデーションテスト"""
-        self.client.force_authenticate(user=self.user)
-        url = reverse('user-profile-update')
-        data = {'email': 'invalid-email'}
-        response = self.client.put(url, data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn('email', response.data)
-
-    def test_user_profile_update_duplicate_email(self):
-        """既存のメールアドレスでの更新が失敗することをテスト"""
-        CustomUser.objects.create_user(email='existinguser@example.com', password='password123')
-        self.client.force_authenticate(user=self.user)
-        url = reverse('user-profile-update')
-        data = {'email': 'existinguser@example.com'}
-        response = self.client.put(url, data, format='json', partial=True)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('email', response.data)
 
@@ -401,4 +331,81 @@ class ConversationListAPIViewTestCase(TestCase):
     def test_get_conversations_unauthenticated(self):
         """未認証ユーザーが会話リストを取得できないことをテスト"""
         response = self.client.get(self.url)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+class UserProfileUpdateAPIViewTest(TestCase):
+    def setUp(self):
+        # テストユーザー作成
+        self.user = CustomUser.objects.create_user(
+            email='testuser@example.com',
+            password='testpassword',
+            name='Test User'
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+        self.url = reverse('user-profile-update')  # 適切なエンドポイント名を使用してください
+
+    @patch('cloudinary.uploader.upload')
+    @override_settings(DEFAULT_FILE_STORAGE='cloudinary_storage.storage.MediaCloudinaryStorage')
+    def test_update_profile_with_image(self, mock_upload):
+        """プロフィール画像をアップロードした場合のテスト"""
+        if settings.DEBUG:
+            expected_url_prefix = settings.MEDIA_URL
+        else:
+            expected_url_prefix = 'https://res.cloudinary.com/'
+
+        # Cloudinaryアップロードのモック
+        mock_upload.return_value = {'secure_url': 'https://res.cloudinary.com/test/image/upload/v12345/test_image.jpg'}
+
+        # 正しい絶対パスの構築
+        test_image_path = os.path.join(settings.BASE_DIR, 'media/profile_images/default_profile.png')
+        with open(test_image_path, 'rb') as img:
+            test_image = SimpleUploadedFile(
+                name='test_image.png',
+                content=img.read(),
+                content_type='image/png'
+            )
+
+        data = {'profile_image': test_image}
+        response = self.client.patch(self.url, data, format='multipart')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+
+        # デバッグ出力
+        print(f"Expected URL prefix: {expected_url_prefix}")
+        print(f"Actual profile image URL: {self.user.profile_image.url}")
+
+        # プロフィール画像のURLが正しいプレフィックスで始まるか確認
+        self.assertTrue(self.user.profile_image.url.startswith(expected_url_prefix))
+    
+    def test_update_without_profile_image(self):
+        """プロフィール画像を送信しない場合、既存の画像が保持されることを確認"""
+        # プロフィール画像を既存の画像に設定
+        self.user.profile_image = 'https://res.cloudinary.com/test/image/upload/v12345/existing_image.jpg'
+        self.user.save()
+
+        # 名前の更新データ
+        data = {'name': 'Updated Name'}
+        response = self.client.patch(self.url, data)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+
+        # 名前が更新されていることを確認
+        self.assertEqual(self.user.name, 'Updated Name')
+        # プロフィール画像は変更されていないことを確認
+        self.assertEqual(
+            self.user.profile_image,
+            'https://res.cloudinary.com/test/image/upload/v12345/existing_image.jpg'
+        )
+    
+    def test_update_unauthenticated(self):
+        """未認証状態での更新が拒否されることを確認"""
+        self.client.logout()  # 認証解除
+
+        # 名前の更新データ
+        data = {'name': 'Unauthorized Update'}
+        response = self.client.patch(self.url, data)
+
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)

@@ -18,24 +18,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         )
         return user
 
-class UserProfileSerializer(serializers.ModelSerializer):
-    profile_image = serializers.SerializerMethodField()
-
-    class Meta:
-        model = CustomUser
-        fields = ('id', 'email', 'name', 'user_type', 'profile_image')
-        read_only_fields = ('user_type',)
-
-    def get_profile_image(self, obj):
-        request = self.context.get('request')
-        if obj.profile_image:  # プロフィール画像が設定されている場合
-            return request.build_absolute_uri(obj.profile_image.url) if request else obj.profile_image.url
-        elif request:  # プロフィール画像がない場合、デフォルト画像を返す
-            default_image_path = settings.MEDIA_URL + 'profile_images/default_profile.png'
-            return request.build_absolute_uri(default_image_path)
-        else:  # request が None の場合、相対URLを返す
-            return settings.MEDIA_URL + 'profile_images/default_profile.png'
-
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True, required=True)
     new_password = serializers.CharField(write_only=True, required=True)
@@ -86,6 +68,24 @@ class LastMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ["id", "content", "timestamp"]  # 必要なフィールドを指定
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    profile_image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CustomUser
+        fields = ('id', 'email', 'name', 'user_type', 'profile_image')
+        read_only_fields = ('user_type',)
+
+    def get_profile_image(self, obj):
+        request = self.context.get('request')
+        if obj.profile_image:  # プロフィール画像が設定されている場合
+            return request.build_absolute_uri(obj.profile_image.url) if request else obj.profile_image.url
+        elif request:  # プロフィール画像がない場合、デフォルト画像を返す
+            default_image_path = settings.MEDIA_URL + 'profile_images/default_profile.png'
+            return request.build_absolute_uri(default_image_path)
+        else:  # request が None の場合、相対URLを返す
+            return settings.MEDIA_URL + 'profile_images/default_profile.png'
 
 class ConversationSerializer(serializers.Serializer):
     other_user = UserProfileSerializer()

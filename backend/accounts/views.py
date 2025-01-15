@@ -12,33 +12,12 @@ from rest_framework.generics import RetrieveAPIView
 from django.db.models import Q, Max, F, Value
 from django.db.models.functions import Greatest
 from collections import defaultdict
+from cloudinary.uploader import upload
 
 class UserRegistrationAPIView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = UserRegistrationSerializer
     permission_classes = [permissions.AllowAny]
-
-class UserProfileUpdateAPIView(generics.RetrieveUpdateAPIView):
-    queryset = CustomUser.objects.all()
-    serializer_class = UserProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_object(self):
-        return self.request.user
-
-    def update(self, request, *args, **kwargs):
-        # リクエストデータをコピーし、画像が空の場合の処理を変更
-        data = request.data.copy()
-
-        # 画像が送信されなかった場合には、profile_image をそのままにする
-        if 'profile_image' not in data or data.get('profile_image') == '':
-            data.pop('profile_image', None)  # profile_imageを削除して変更しない
-
-        serializer = self.get_serializer(self.get_object(), data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
-
-        return Response(serializer.data)
 
 class LogoutAPIView(APIView):
     authentication_classes = [TokenAuthentication]
@@ -235,3 +214,30 @@ class ConversationListAPIView(APIView):
             conversations.append(serializer.data)
 
         return Response(conversations)
+
+class UserProfileUpdateAPIView(generics.RetrieveUpdateAPIView):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserProfileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+    def update(self, request, *args, **kwargs):
+        # リクエストデータをコピー
+        data = request.data.copy()
+
+        # プロフィール画像の処理
+        if 'profile_image' in data and data.get('profile_image'):
+            # 画像をCloudinaryにアップロード
+            uploaded_file = upload(data['profile_image'], folder="profile_images")
+            data['profile_image'] = uploaded_file['secure_url']
+        else:
+            # プロフィール画像が送信されなかった場合、変更しない
+            data.pop('profile_image', None)
+
+        serializer = self.get_serializer(self.get_object(), data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
