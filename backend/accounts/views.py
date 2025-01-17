@@ -224,20 +224,45 @@ class UserProfileUpdateAPIView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
     def update(self, request, *args, **kwargs):
-        # リクエストデータをコピー
-        data = request.data.copy()
+            print("Starting update process...")  # 処理開始の確認
 
-        # プロフィール画像の処理
-        if 'profile_image' in data and data.get('profile_image'):
-            # 画像をCloudinaryにアップロード
-            uploaded_file = upload(data['profile_image'], folder="profile_images")
-            data['profile_image'] = uploaded_file['secure_url']
-        else:
-            # プロフィール画像が送信されなかった場合、変更しない
-            data.pop('profile_image', None)
+            data = request.data.copy()
+            print("Original request data:", data)  # リクエストデータの確認
 
-        serializer = self.get_serializer(self.get_object(), data=data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+            if 'profile_image' in data and data.get('profile_image'):
+                print("Profile image detected. Uploading to Cloudinary...")
+                uploaded_file = upload(data['profile_image'], folder="profile_images")
+                print("Uploaded file data:", uploaded_file)  # アップロード結果の確認
+                data['profile_image'] = uploaded_file['secure_url']
+                print("Updated profile_image URL:", data['profile_image'])  # 更新されたURLの確認
+            else:
+                print("No profile_image provided or empty. Skipping image update.")
+                data.pop('profile_image', None)
 
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            serializer = self.get_serializer(
+                self.get_object(),
+                data=data,
+                partial=True,
+                context={'request': request}
+            )
+            print("Serializer initialized with data:", serializer.initial_data)  # シリアライザの初期データ確認
+
+            if not serializer.is_valid():
+                print("Validation errors:", serializer.errors)  # バリデーションエラーの確認
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            print("Serializer data is valid. Performing update...")
+            self.perform_update(serializer)
+            print("Update performed successfully.")
+
+            # 更新後のインスタンスを再取得してレスポンスを作成
+            self.get_object().refresh_from_db()
+            print("Object refreshed from DB.")
+
+            serializer = self.get_serializer(self.get_object())
+            print("Final serialized data:", serializer.data)  # 最終レスポンスデータの確認
+
+            response = Response(serializer.data, status=status.HTTP_200_OK)
+            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            print("Response prepared with Cache-Control headers.")
+            return response
