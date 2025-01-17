@@ -70,8 +70,6 @@ class LastMessageSerializer(serializers.ModelSerializer):
         fields = ["id", "content", "timestamp"]  # 必要なフィールドを指定
 
 class UserProfileSerializer(serializers.ModelSerializer):
-    profile_image = serializers.SerializerMethodField()
-
     class Meta:
         model = CustomUser
         fields = ('id', 'email', 'name', 'user_type', 'profile_image')
