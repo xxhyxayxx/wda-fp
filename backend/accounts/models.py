@@ -27,7 +27,7 @@ class CustomUserManager(BaseUserManager):
 class CustomUser(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     name = models.CharField(max_length=50, default='New User')  # 名前フィールドを追加
-    profile_image = models.ImageField(upload_to='profile_images/', default='profile_images/default_profile.png')
+    profile_image = models.URLField(max_length=500, blank=True, null=True)
     user_type = models.CharField(
         max_length=10,
         choices=(
