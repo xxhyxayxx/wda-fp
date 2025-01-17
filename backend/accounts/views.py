@@ -253,7 +253,10 @@ class UserProfileUpdateAPIView(generics.RetrieveUpdateAPIView):
 
             print("Serializer data is valid. Performing update...")
             self.perform_update(serializer)
+            print("Updated instance:", self.get_object().profile_image)  # 保存後のプロファイル画像を出力
             print("Update performed successfully.")
+            instance = self.get_object()
+            print("Profile image in DB after update:", instance.profile_image)  # DBの状態を出力
 
             # 更新後のインスタンスを再取得してレスポンスを作成
             self.get_object().refresh_from_db()
