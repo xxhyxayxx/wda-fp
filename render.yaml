@@ -30,3 +30,19 @@ services:
         value: "production"
       - key: ASGI_APPLICATION
         value: "backend.asgi.application"
+
+# Frontend の設定
+  - type: static
+    name: my-frontend-staging
+    env: static
+    region: singapore
+    plan: free
+    branch: staging
+    buildCommand: "npm install && npm run build"
+    rootDir: frontend/app  # ソースコードのディレクトリを指定
+    publishPath: dist  # ビルド後の公開ディレクトリ
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: "https://my-backend-staging.onrender.com"
+      - key: VITE_WEBSOCKET_URL
+        value: "wss://my-backend-staging.onrender.com"
