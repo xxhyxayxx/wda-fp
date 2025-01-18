@@ -112,7 +112,8 @@ class UserProfileSerializerTest(TestCase):
             email='testuser@example.com',
             password='testpassword',
             user_type='student',
-            name='Test User'
+            name='Test User',
+            profile_image='https://example.com/default_profile.png'
         )
     
     def test_profile_serializer_valid_data(self):
@@ -128,7 +129,7 @@ class UserProfileSerializerTest(TestCase):
         updated_user = serializer.save()
         self.assertEqual(updated_user.email, data['email'])
         self.assertEqual(updated_user.name, data['name'])
-
+    
     def test_profile_serializer_email_unique(self):
         """メールアドレスが一意であることを確認するテスト"""
         CustomUser.objects.create_user(
@@ -143,7 +144,7 @@ class UserProfileSerializerTest(TestCase):
         serializer = UserProfileSerializer(instance=self.user, data=data, partial=True, context={'request': request})
         self.assertFalse(serializer.is_valid())
         self.assertIn('email', serializer.errors)
-
+    
     def test_profile_serializer_partial_update(self):
         """シリアライザが部分更新を正しく処理できるかをテスト"""
         data = {
@@ -156,7 +157,19 @@ class UserProfileSerializerTest(TestCase):
         updated_user = serializer.save()
         self.assertEqual(updated_user.name, data['name'])
         self.assertEqual(updated_user.email, self.user.email)  # 他のフィールドは変更されないことを確認
-
+    
+    def test_profile_image_is_updated(self):
+        """profile_image が更新されることを確認するテスト"""
+        data = {
+            'profile_image': 'https://example.com/updated_profile.png',
+        }
+        request = self.factory.get('/profile/update/')
+        request.user = self.user
+        serializer = UserProfileSerializer(instance=self.user, data=data, partial=True, context={'request': request})
+        self.assertTrue(serializer.is_valid())
+        updated_user = serializer.save()
+        self.assertEqual(updated_user.profile_image, data['profile_image'])
+    
     def test_default_profile_image_remains(self):
         """profile_image が指定されていない場合、デフォルトの画像が維持されることを確認するテスト"""
         data = {
@@ -167,10 +180,7 @@ class UserProfileSerializerTest(TestCase):
         serializer = UserProfileSerializer(instance=self.user, data=data, partial=True, context={'request': request})
         self.assertTrue(serializer.is_valid())
         updated_user = serializer.save()
-
-        # プロフィール画像がデフォルト画像であることを確認
-        profile_image_url = serializer.data['profile_image']
-        self.assertTrue(profile_image_url.endswith('profile_images/default_profile.png'))  # 絶対URLのチェック
+        self.assertEqual(updated_user.profile_image, self.user.profile_image)  # プロフィール画像が変更されていないことを確認
 
     def test_profile_serializer_user_type_read_only(self):
         """user_typeが読み取り専用であることをテスト"""

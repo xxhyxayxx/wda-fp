@@ -13,6 +13,7 @@ class CustomUserModelTest(TestCase):
             'password': 'testpassword123',
             'user_type': 'student'
         }
+        self.default_profile_image_url = "https://example.com/media/profile_images/default_profile.png"  # デフォルト画像URL
 
     def test_create_user_with_email_successful(self):
         """メールアドレスでユーザーが正常に作成されることをテスト"""
@@ -43,29 +44,36 @@ class CustomUserModelTest(TestCase):
         self.assertEqual(user.user_type, 'student')
 
     def test_default_profile_image(self):
-        """プロフィール画像のデフォルト値が設定されていることをテスト"""
+        """プロフィール画像のデフォルト値が None であることをテスト"""
         user = CustomUser.objects.create_user(email='profileuser@example.com', password='profilepassword')
-        self.assertEqual(user.profile_image.name, 'profile_images/default_profile.png')
+        self.assertIsNone(user.profile_image)  # URLField なのでデフォルト値は None
+
+    def test_set_profile_image_url(self):
+        """プロフィール画像にURLを設定できることをテスト"""
+        user = CustomUser.objects.create_user(**self.user_data)
+        user.profile_image = self.default_profile_image_url
+        user.save()
+        self.assertEqual(user.profile_image, self.default_profile_image_url)
 
     def test_user_str_method(self):
         """__str__ メソッドがメールアドレスを返すことをテスト"""
         user = CustomUser.objects.create_user(**self.user_data)
         self.assertEqual(str(user), self.user_data['email'])
-    
+
     def test_update_user_type(self):
         """ユーザーの user_type を更新するテスト"""
         user = CustomUser.objects.create_user(**self.user_data)
         user.user_type = 'teacher'
         user.save()
         self.assertEqual(user.user_type, 'teacher')
-    
+
     def test_delete_user(self):
         """ユーザーの削除が正常に行われることをテスト"""
         user = CustomUser.objects.create_user(**self.user_data)
         user_id = user.id
         user.delete()
         self.assertFalse(CustomUser.objects.filter(id=user_id).exists())
-        
+
     def test_default_name_value(self):
         """ユーザー作成時のデフォルトの名前が 'New User' であることをテスト"""
         user = CustomUser.objects.create_user(**self.user_data)

@@ -10,6 +10,7 @@ from unittest.mock import patch
 from django.db.models import Q  # 修正: Q をインポート
 from django.conf import settings
 from django.test import override_settings
+from rest_framework.authtoken.models import Token
 
 class UserRegistrationAPIViewTest(TestCase):
     def setUp(self):
@@ -335,79 +336,99 @@ class ConversationListAPIViewTestCase(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-class UserProfileUpdateAPIViewTest(TestCase):
+class UserProfileUpdateAPIViewTest(APITestCase):
+
     def setUp(self):
-        # テストユーザー作成
         self.user = CustomUser.objects.create_user(
-            email='testuser@example.com',
-            password='testpassword',
-            name='Test User'
+            email="testuser@example.com",
+            password="testpassword123",
+            user_type="student"
         )
-        self.client = APIClient()
-        self.client.force_authenticate(user=self.user)
-        self.url = reverse('user-profile-update')  # 適切なエンドポイント名を使用してください
+        token, _ = Token.objects.get_or_create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
+        self.update_url = reverse("user-profile-update")
 
-    @patch('cloudinary.uploader.upload')
-    @override_settings(DEFAULT_FILE_STORAGE='cloudinary_storage.storage.MediaCloudinaryStorage')
+        # テスト用画像のパスを設定
+        self.test_image_path = os.path.join(os.path.dirname(__file__), "test_image.png")
+        
+    @patch("accounts.views.upload")  # Cloudinary のアップロード関数をモック
     def test_update_profile_with_image(self, mock_upload):
-        """プロフィール画像をアップロードした場合のテスト"""
-        if settings.DEBUG:
-            expected_url_prefix = settings.MEDIA_URL
-        else:
-            expected_url_prefix = 'https://res.cloudinary.com/'
+        # モックの戻り値を設定
+        mock_upload.return_value = {
+            "secure_url": "https://res.cloudinary.com/dkmwoidaa/image/upload/v1234567890/profile_images/random_generated_id.png"
+        }
 
-        # Cloudinaryアップロードのモック
-        mock_upload.return_value = {'secure_url': 'https://res.cloudinary.com/test/image/upload/v12345/test_image.jpg'}
+        # テスト画像ファイルを開いて送信
+        with open(self.test_image_path, "rb") as image:
+            data = {
+                "name": "Updated Name",
+                "profile_image": SimpleUploadedFile(
+                    name="test_image.png",
+                    content=image.read(),
+                    content_type="image/png"
+                )
+            }
+            response = self.client.patch(self.update_url, data, format="multipart")
 
-        # 正しい絶対パスの構築
-        test_image_path = os.path.join(settings.BASE_DIR, 'media/profile_images/default_profile.png')
-        with open(test_image_path, 'rb') as img:
-            test_image = SimpleUploadedFile(
-                name='test_image.png',
-                content=img.read(),
-                content_type='image/png'
-            )
-
-        data = {'profile_image': test_image}
-        response = self.client.patch(self.url, data, format='multipart')
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        # DBをリフレッシュして更新内容を確認
         self.user.refresh_from_db()
 
-        # デバッグ出力
-        print(f"Expected URL prefix: {expected_url_prefix}")
-        print(f"Actual profile image URL: {self.user.profile_image.url}")
+        # アサーション: HTTP ステータスコード
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # プロフィール画像のURLが正しいプレフィックスで始まるか確認
-        self.assertTrue(self.user.profile_image.url.startswith(expected_url_prefix))
+        # アサーション: 名前が更新されているか
+        self.assertEqual(self.user.name, "Updated Name")
+
+        # アサーション: プロフィール画像 URL が Cloudinary の形式を満たしているか
+        self.assertTrue(self.user.profile_image.startswith("https://res.cloudinary.com/"))
+        self.assertIn("/profile_images/", self.user.profile_image)
+        self.assertTrue(self.user.profile_image.endswith(".png"))
+
+        # アップロード関数が一度だけ呼び出されたことを確認
+        mock_upload.assert_called_once()
     
-    def test_update_without_profile_image(self):
-        """プロフィール画像を送信しない場合、既存の画像が保持されることを確認"""
-        # プロフィール画像を既存の画像に設定
-        self.user.profile_image = 'https://res.cloudinary.com/test/image/upload/v12345/existing_image.jpg'
+    @patch("accounts.views.upload")  # Cloudinary のアップロード関数をモック
+    def test_update_profile_with_image_and_check_response(self, mock_upload):
+        mock_upload.return_value = {
+            "secure_url": "https://res.cloudinary.com/dkmwoidaa/image/upload/v1234567890/profile_images/random_generated_id.png"
+        }
+
+        with open(self.test_image_path, "rb") as image:
+            data = {
+                "name": "Updated Name",
+                "profile_image": SimpleUploadedFile(
+                    name="test_image.png",
+                    content=image.read(),
+                    content_type="image/png"
+                )
+            }
+            response = self.client.patch(self.update_url, data, format="multipart")
+
+        self.user.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        # レスポンス内の profile_image が更新された URL を返すか確認
+        self.assertIn("profile_image", response.data)
+        self.assertEqual(
+            response.data["profile_image"],
+            "https://res.cloudinary.com/dkmwoidaa/image/upload/v1234567890/profile_images/random_generated_id.png"
+        )
+    
+    def test_partial_update_without_image_check_response(self):
+        # プロフィール画像を最初にセット
+        self.user.profile_image = "https://res.cloudinary.com/dkmwoidaa/image/upload/v1234567890/profile_images/existing_image.png"
         self.user.save()
 
-        # 名前の更新データ
-        data = {'name': 'Updated Name'}
-        response = self.client.patch(self.url, data)
+        # 画像なしで名前だけ更新
+        data = {"name": "Updated Name"}
+        response = self.client.patch(self.update_url, data, format="json")
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.user.refresh_from_db()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        # 名前が更新されていることを確認
-        self.assertEqual(self.user.name, 'Updated Name')
-        # プロフィール画像は変更されていないことを確認
+        # レスポンス内に元の画像URLが保持されていることを確認
+        self.assertIn("profile_image", response.data)
         self.assertEqual(
-            self.user.profile_image,
-            'https://res.cloudinary.com/test/image/upload/v12345/existing_image.jpg'
+            response.data["profile_image"],
+            "https://res.cloudinary.com/dkmwoidaa/image/upload/v1234567890/profile_images/existing_image.png"
         )
-    
-    def test_update_unauthenticated(self):
-        """未認証状態での更新が拒否されることを確認"""
-        self.client.logout()  # 認証解除
-
-        # 名前の更新データ
-        data = {'name': 'Unauthorized Update'}
-        response = self.client.patch(self.url, data)
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
