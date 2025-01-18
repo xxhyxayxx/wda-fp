@@ -3,9 +3,15 @@ import apiClient from '../../utils/apiClient'; // 作成したaxiosインスタ�
 
 const initialState = {
   isLoggedIn: false,
-  userInfo: null,
-  searchResults: [], // 検索結果を保持
-  selectedUser: null, // 選択されたユーザー詳細
+  userInfo: {
+    id: null,
+    email: '',
+    name: '',
+    user_type: '',
+    profile_image: '', // 初期値として空の画像URLを設定
+  },
+  searchResults: [],
+  selectedUser: null,
   status: 'idle',
   error: null,
 };
@@ -216,7 +222,7 @@ const userSlice = createSlice({
       })
       .addCase(fetchProfile.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.userInfo = action.payload;
+        state.userInfo = { ...state.userInfo, ...action.payload }; // 必要なデータをマージ
         state.status = 'idle';
       })
       .addCase(fetchProfile.rejected, (state, action) => {
@@ -232,8 +238,7 @@ const userSlice = createSlice({
       // updateProfile.fulfilledの修正
       .addCase(updateProfile.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        const { user_type, ...updatedData } = action.payload;
-        state.userInfo = { ...state.userInfo, ...updatedData };
+        state.userInfo = { ...state.userInfo, ...action.payload }; // プロフィール情報を更新
       })
       .addCase(updateProfile.rejected, (state, action) => {
         state.status = 'failed';

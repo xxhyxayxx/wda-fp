@@ -13,7 +13,10 @@ class CustomUserModelTest(TestCase):
             'password': 'testpassword123',
             'user_type': 'student'
         }
-        self.default_profile_image_url = "https://example.com/media/profile_images/default_profile.png"  # デフォルト画像URL
+        self.default_profile_image_url = (
+            "https://res.cloudinary.com/dkmwoidaa/image/upload/v1736835004/"
+            "profile_images/kaft7arwqbkxzdw2qerj.png"
+        )
 
     def test_create_user_with_email_successful(self):
         """メールアドレスでユーザーが正常に作成されることをテスト"""
@@ -44,9 +47,9 @@ class CustomUserModelTest(TestCase):
         self.assertEqual(user.user_type, 'student')
 
     def test_default_profile_image(self):
-        """プロフィール画像のデフォルト値が None であることをテスト"""
+        """プロフィール画像のデフォルト値が設定したURLであることをテスト"""
         user = CustomUser.objects.create_user(email='profileuser@example.com', password='profilepassword')
-        self.assertIsNone(user.profile_image)  # URLField なのでデフォルト値は None
+        self.assertEqual(user.profile_image, self.default_profile_image_url)
 
     def test_set_profile_image_url(self):
         """プロフィール画像にURLを設定できることをテスト"""
@@ -85,7 +88,7 @@ class CustomUserModelTest(TestCase):
         user.name = 'Updated User Name'
         user.save()
         self.assertEqual(user.name, 'Updated User Name')
-
+        
 class NotificationModelTest(TestCase):
     def setUp(self):
         self.user = CustomUser.objects.create_user(

@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, Permis
 from django.db import models
 from django.utils import timezone
 from django.conf import settings
+from django.utils.timezone import now
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -25,9 +26,15 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
+    objects = CustomUserManager() 
     email = models.EmailField(unique=True)
-    name = models.CharField(max_length=50, default='New User')  # 名前フィールドを追加
-    profile_image = models.URLField(max_length=500, blank=True, null=True)
+    name = models.CharField(max_length=50, default='New User')
+    profile_image = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        default="https://res.cloudinary.com/dkmwoidaa/image/upload/v1736835004/profile_images/kaft7arwqbkxzdw2qerj.png"
+    )
     user_type = models.CharField(
         max_length=10,
         choices=(
@@ -38,9 +45,7 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-    date_joined = models.DateTimeField(default=timezone.now)
-
-    objects = CustomUserManager()
+    date_joined = models.DateTimeField(default=now)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
