@@ -34,13 +34,14 @@ services:
 # Frontend の設定
   - type: web
     name: my-frontend-staging
-    env: node
+    env: static  # 静的サイトとして設定
+    runtime: static  # 静的ランタイムを指定
     region: singapore
     plan: free
     branch: staging
     buildCommand: "npm install && npm run build"
-    startCommand: "serve -s dist -l 3000"
-    rootDir: frontend/app  # フロントエンドのソースディレクトリ
+    publishPath: dist  # 静的ファイルの公開ディレクトリ
+    rootDir: frontend/app  # フロントエンドのソースコードディレクトリ
     envVars:
       - key: VITE_API_BASE_URL
         value: "https://my-backend-staging.onrender.com"
