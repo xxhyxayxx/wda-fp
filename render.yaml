@@ -7,7 +7,7 @@ services:
     branch: staging
     healthCheckPath: /health/
     buildCommand: "./build.sh"
-    startCommand: "gunicorn backend.wsgi:application --bind 0.0.0.0:10000 --log-file -"
+    startCommand: "daphne -b 0.0.0.0 -p 10000 backend.asgi:application"
     rootDir: backend
     envVars:
       - key: SECRET_KEY
@@ -23,8 +23,10 @@ services:
       - key: DATABASE_URL
         value: "sqlite:///db.sqlite3"
       - key: ALLOWED_HOSTS
-        value: "localhost,127.0.0.1,backend,backend:8000"
+        value: "my-backend-staging.onrender.com"
       - key: CLOUDINARY_URL
         value: "${CLOUDINARY_URL}"
       - key: RENDER_ENV
         value: "production"
+      - key: ASGI_APPLICATION
+        value: "backend.asgi.application"
