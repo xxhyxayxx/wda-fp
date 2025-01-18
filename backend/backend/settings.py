@@ -167,29 +167,42 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 # Channels settings (WebSocket)
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [("redis", 6379)],
+if os.getenv('RENDER_ENV') == 'production':  # 本番環境
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [os.getenv('REDIS_URL')],  # Render環境変数からRedisのURLを取得
+            },
         },
-    },
-}
+    }
+else:  # ローカル開発環境
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [("localhost", 6379)],  # ローカルのRedisインスタンスを使用
+            },
+        },
+    }
 
 # Celery settings
-CELERY_BROKER_URL = 'redis://redis:6379/0'
-CELERY_RESULT_BACKEND = 'django-db'
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# Celery settings
+if os.getenv('RENDER_ENV') == 'production':  # 本番環境
+    CELERY_BROKER_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')  # 本番環境のRedis URL
+    CELERY_RESULT_BACKEND = 'django-db'  # 本番環境はDBを使用
+else:  # ローカル環境
+    CELERY_BROKER_URL = 'redis://localhost:6379/0'  # ローカルRedisの設定
+    CELERY_RESULT_BACKEND = 'django-db'  # ローカルでもDBを使用
+
+CELERY_ACCEPT_CONTENT = ['json']  # 受け入れるコンテンツタイプ
+CELERY_TASK_SERIALIZER = 'json'  # タスクシリアライザ
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True  # 再試行を有効化
 
 # テスト環境用設定
 if os.environ.get('TESTING', 'False') == 'True':
     CELERY_TASK_ALWAYS_EAGER = True  # 非同期タスクを同期的に実行
     CELERY_TASK_EAGER_PROPAGATES = True  # エラーを即座に伝播
-
-# TESTING=True python manage.py test courses.tests.test_views
-if os.environ.get('TESTING', 'False') == 'True':
     CHANNEL_LAYERS = {
         "default": {
             "BACKEND": "channels.layers.InMemoryChannelLayer",
