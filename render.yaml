@@ -34,13 +34,12 @@ services:
 # Frontend の設定
   - type: web
     name: my-frontend-staging
-    env: static  # 静的サイトとして設定
-    runtime: static  # 静的ランタイムを指定
+    env: node
     region: singapore
     plan: free
     branch: staging
     buildCommand: "npm install && npm run build"
-    publishPath: dist  # 静的ファイルの公開ディレクトリ
+    startCommand: "npx serve -s dist -l 3000"  # `serve` を `npx` 経由で実行
     rootDir: frontend/app  # フロントエンドのソースコードディレクトリ
     envVars:
       - key: VITE_API_BASE_URL
