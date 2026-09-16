@@ -1,7 +1,7 @@
 services:
   - type: web
     name: my-backend
-    env: python
+    runtime: python
     region: singapore
     plan: free
     branch: main
@@ -17,7 +17,7 @@ services:
       - key: SUPERUSER_EMAIL
         value: "admin@example.com"
       - key: SUPERUSER_PASSWORD
-        value: "password"
+        sync: false
     mounts:
-          - path: /media
-            volume: media-volume
+      - path: /media
+        volume: media-volume

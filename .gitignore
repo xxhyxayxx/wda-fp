@@ -67,3 +67,6 @@ backend/media/*
 !backend/media/test/
 !backend/media/profile_images/default_profile.png
 
+# Redis dump
+*.rdb
+
